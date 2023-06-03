@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *
-*/
+ */
 
 #ifndef SYSTEM_PLUGIN_OliRoverInterface_HH_
 #define SYSTEM_PLUGIN_OliRoverInterface_HH_
@@ -30,17 +30,27 @@ namespace oli_rover_interface
   // Here we use `ISystemPostUpdate`, which is used to get results after
   // physics runs. The opposite of that, `ISystemPreUpdate`, would be used by
   // plugins that want to send commands.
-  class OliRoverInterface:
-    public gz::sim::System,
-    public gz::sim::ISystemPostUpdate
+  class OliRoverInterface : public gz::sim::System,
+                            public gz::sim::ISystemConfigure,
+                            public gz::sim::ISystemPostUpdate
   {
     // Plugins inheriting ISystemPostUpdate must implement the PostUpdate
     // callback. This is called at every simulation iteration after the physics
     // updates the world. The _info variable provides information such as time,
     // while the _ecm provides an interface to all entities and components in
     // simulation.
-    public: void PostUpdate(const gz::sim::UpdateInfo &_info,
-                const gz::sim::EntityComponentManager &_ecm) override;
+  public:
+    void PostUpdate(const gz::sim::UpdateInfo &_info,
+                    const gz::sim::EntityComponentManager &_ecm) override;
+
+  public:
+    void Configure(const gz::sim::Entity &_entity,
+                   const std::shared_ptr<const sdf::Element> &,
+                   gz::sim::EntityComponentManager &_ecm,
+                   gz::sim::EventManager &) override;
+
+  private:
+    gz::sim::Entity targetEntity;
   };
 }
 #endif

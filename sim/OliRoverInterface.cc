@@ -13,12 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *
-*/
+ */
 
 // We'll use a string and the gzmsg command below for a brief example.
 // Remove these includes if your plugin doesn't need them.
 #include <string>
 #include <gz/common/Console.hh>
+#include <gz/sim/Model.hh>
+#include <gz/sim/Util.hh>
+#include <gz/sim/components/Joint.hh>
+#include <gz/sim/components/JointPositionReset.hh>
+#include <gz/sim/components/JointPositionLimitsCmd.hh>
+#include <gz/sim/components/JointType.hh>
+#include <gz/sim/components/ParentEntity.hh>
 
 // This header is required to register plugins. It's good practice to place it
 // in the cc file, like it's done here.
@@ -35,19 +42,32 @@ GZ_ADD_PLUGIN(
     oli_rover_interface::OliRoverInterface::ISystemPostUpdate)
 
 using namespace oli_rover_interface;
+using namespace gz;
+using namespace sim;
 
 // Here we implement the PostUpdate function, which is called at every
 // iteration.
 void OliRoverInterface::PostUpdate(const gz::sim::UpdateInfo &_info,
-    const gz::sim::EntityComponentManager &/*_ecm*/)
+                                   const gz::sim::EntityComponentManager &_ecm)
 {
-  // This is a simple example of how to get information from UpdateInfo.
-  std::string msg = "Hello, world! Simulation is ";
-  if (!_info.paused)
-    msg += "not ";
-  msg += "paused.";
+  auto joints = _ecm.EntitiesByComponents(
+      components::ParentEntity(this->targetEntity), components::Joint());
 
+  auto children = _ecm.Descendants(this->targetEntity);
+
+  for (auto child : joints)
+  {
+    gzmsg << gz::sim::scopedName(child, _ecm).c_str() << std::endl;
+  }
   // Messages printed with gzmsg only show when running with verbosity 3 or
   // higher (i.e. gz sim -v 3)
-  gzmsg << msg << std::endl;
+  // gzmsg << msg << std::endl;
+}
+
+void OliRoverInterface::Configure(const gz::sim::Entity &_entity,
+                                  const std::shared_ptr<const sdf::Element> &,
+                                  gz::sim::EntityComponentManager &_ecm,
+                                  gz::sim::EventManager &)
+{
+  gzmsg << gz::sim::scopedName(_entity, _ecm).c_str() << std::endl;
 }
