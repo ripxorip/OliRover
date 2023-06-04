@@ -49,6 +49,14 @@ namespace oli_rover_interface
     gz::transport::Node node;
 
     void imu_callback(const gz::msgs::IMU &_msg);
+
+    int sockfd;
+    const int PORT = 1337;
+    static const int buffer_size = 1024;
+    char buffer[buffer_size];
+
+    void setup_udp_server();
+    void read_udp_data();
   };
 }
 #endif
