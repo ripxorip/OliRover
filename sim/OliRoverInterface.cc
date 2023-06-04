@@ -1,20 +1,3 @@
-/*
- * Copyright (C) 2021 Open Source Robotics Foundation
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
- */
-
 // We'll use a string and the gzmsg command below for a brief example.
 // Remove these includes if your plugin doesn't need them.
 #include <string>
@@ -28,6 +11,9 @@
 #include <gz/sim/components/JointPositionLimitsCmd.hh>
 #include <gz/sim/components/JointType.hh>
 #include <gz/sim/components/ParentEntity.hh>
+
+#include <gz/transport/Node.hh>
+#include <gz/msgs/imu_sensor.pb.h>
 
 // This header is required to register plugins. It's good practice to place it
 // in the cc file, like it's done here.
@@ -106,4 +92,13 @@ void OliRoverInterface::Configure(const gz::sim::Entity &_entity,
       this->rightJoint = joint;
     }
   }
+
+  std::string topic_sub = "/imu";
+  this->node.Subscribe(topic_sub, &OliRoverInterface::imu_callback, this);
+
+}
+
+void OliRoverInterface::imu_callback(const gz::msgs::IMU &_msg)
+{
+  gzmsg << "Received IMU message: " << _msg.linear_acceleration().x() << std::endl;
 }
