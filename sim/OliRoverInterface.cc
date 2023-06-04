@@ -22,6 +22,8 @@
 #include <gz/sim/Model.hh>
 #include <gz/sim/Util.hh>
 #include <gz/sim/components/Joint.hh>
+#include <gz/sim/components/JointVelocity.hh>
+#include <gz/sim/components/JointVelocityCmd.hh>
 #include <gz/sim/components/JointPositionReset.hh>
 #include <gz/sim/components/JointPositionLimitsCmd.hh>
 #include <gz/sim/components/JointType.hh>
@@ -39,29 +41,48 @@
 GZ_ADD_PLUGIN(
     oli_rover_interface::OliRoverInterface,
     gz::sim::System,
+    oli_rover_interface::OliRoverInterface::ISystemConfigure,
+    oli_rover_interface::OliRoverInterface::ISystemPreUpdate,
     oli_rover_interface::OliRoverInterface::ISystemPostUpdate)
 
 using namespace oli_rover_interface;
 using namespace gz;
 using namespace sim;
 
-// Here we implement the PostUpdate function, which is called at every
-// iteration.
 void OliRoverInterface::PostUpdate(const gz::sim::UpdateInfo &_info,
                                    const gz::sim::EntityComponentManager &_ecm)
 {
-  auto joints = _ecm.EntitiesByComponents(
-      components::ParentEntity(this->targetEntity), components::Joint());
+  this->leftWheelSpeed = 4.00;
+  this->rightWheelSpeed = -4.00;
+}
 
-  auto children = _ecm.Descendants(this->targetEntity);
-
-  for (auto child : joints)
+void OliRoverInterface::PreUpdate(const gz::sim::UpdateInfo &_info,
+                                  gz::sim::EntityComponentManager &_ecm)
+{
   {
-    gzmsg << gz::sim::scopedName(child, _ecm).c_str() << std::endl;
+    auto vel = _ecm.Component<components::JointVelocityCmd>(this->leftJoint);
+    if (vel == nullptr)
+    {
+      _ecm.CreateComponent(this->leftJoint,
+                           components::JointVelocityCmd({this->leftWheelSpeed}));
+    }
+    else
+    {
+      *vel = components::JointVelocityCmd({this->leftWheelSpeed});
+    }
   }
-  // Messages printed with gzmsg only show when running with verbosity 3 or
-  // higher (i.e. gz sim -v 3)
-  // gzmsg << msg << std::endl;
+  {
+    auto vel = _ecm.Component<components::JointVelocityCmd>(this->rightJoint);
+    if (vel == nullptr)
+    {
+      _ecm.CreateComponent(this->rightJoint,
+                           components::JointVelocityCmd({this->rightWheelSpeed}));
+    }
+    else
+    {
+      *vel = components::JointVelocityCmd({this->rightWheelSpeed});
+    }
+  }
 }
 
 void OliRoverInterface::Configure(const gz::sim::Entity &_entity,
@@ -69,5 +90,20 @@ void OliRoverInterface::Configure(const gz::sim::Entity &_entity,
                                   gz::sim::EntityComponentManager &_ecm,
                                   gz::sim::EventManager &)
 {
-  gzmsg << gz::sim::scopedName(_entity, _ecm).c_str() << std::endl;
+  this->targetEntity = _entity;
+  auto joints = _ecm.EntitiesByComponents(
+      components::ParentEntity(this->targetEntity), components::Joint());
+
+  for (auto joint : joints)
+  {
+    auto jointType = _ecm.Component<components::JointType>(joint);
+    if (!gz::sim::removeParentScope(::sim::scopedName(joint, _ecm, "::", false), "::").compare("left_wheel_joint"))
+    {
+      this->leftJoint = joint;
+    }
+    else if (!gz::sim::removeParentScope(::sim::scopedName(joint, _ecm, "::", false), "::").compare("right_wheel_joint"))
+    {
+      this->rightJoint = joint;
+    }
+  }
 }

@@ -32,6 +32,7 @@ namespace oli_rover_interface
   // plugins that want to send commands.
   class OliRoverInterface : public gz::sim::System,
                             public gz::sim::ISystemConfigure,
+                            public gz::sim::ISystemPreUpdate,
                             public gz::sim::ISystemPostUpdate
   {
     // Plugins inheriting ISystemPostUpdate must implement the PostUpdate
@@ -43,6 +44,10 @@ namespace oli_rover_interface
     void PostUpdate(const gz::sim::UpdateInfo &_info,
                     const gz::sim::EntityComponentManager &_ecm) override;
 
+
+  public: void PreUpdate(const gz::sim::UpdateInfo &_info,
+                gz::sim::EntityComponentManager &_ecm) override;
+
   public:
     void Configure(const gz::sim::Entity &_entity,
                    const std::shared_ptr<const sdf::Element> &,
@@ -51,6 +56,12 @@ namespace oli_rover_interface
 
   private:
     gz::sim::Entity targetEntity;
+
+    double leftWheelSpeed = {0.0};
+    double rightWheelSpeed = {0.0};
+
+    gz::sim::Entity leftJoint;
+    gz::sim::Entity rightJoint;
   };
 }
 #endif
