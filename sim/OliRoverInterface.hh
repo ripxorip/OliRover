@@ -50,8 +50,14 @@ namespace oli_rover_interface
 
     void imu_callback(const gz::msgs::IMU &_msg);
 
-    int sockfd;
-    const int PORT = 1337;
+    int server_socket_fd;
+    const int server_port = 1337;
+
+    int client_socket_fd;
+    const int client_port = 1338;
+    const char client_ip[16] = "192.168.122.1";
+    struct sockaddr_in client_address;
+
     static const int buffer_size = 1024;
     char buffer[buffer_size];
 

@@ -110,7 +110,7 @@ void OliRoverInterface::Configure(const gz::sim::Entity &_entity,
 void OliRoverInterface::imu_callback(const gz::msgs::IMU &_msg)
 {
   /* This will be the syncronization */
-  gzmsg << "Received IMU message: " << _msg.linear_acceleration().x() << std::endl;
+  // gzmsg << "Received IMU message: " << _msg.linear_acceleration().x() << std::endl;
   /* To get actuator control */
   read_udp_data();
   /* To send sensor data to the simulator */
@@ -124,41 +124,64 @@ void OliRoverInterface::read_udp_data()
 
   // Check if data is available
   int bytes_available;
-  ioctl(sockfd, FIONREAD, &bytes_available);
+  ioctl(server_socket_fd, FIONREAD, &bytes_available);
 
+  static int count = 0;
   if (bytes_available > 0)
   {
     // Receive message
-    ssize_t recv_len = recvfrom(sockfd, (char *)buffer, buffer_size, 0, (struct sockaddr *)&client_addr, &addr_len);
+    ssize_t recv_len = recvfrom(server_socket_fd, (char *)buffer, buffer_size, 0, (struct sockaddr *)&client_addr, &addr_len);
     buffer[recv_len] = '\0';
-    std::cout << "Client: " << buffer << std::endl;
+    gzmsg << "Client: " << buffer << std::endl;
+    count++;
+    if (count % 2 == 0)
+    {
+      const char *message = "Hello from simulator";
+      sendto(client_socket_fd, (const char *)message, strlen(message), 0, (const struct sockaddr *)&client_address, sizeof(client_address));
+    }
   }
 }
 
 void OliRoverInterface::setup_udp_server()
 {
-  if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
+  if ((server_socket_fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
   {
     perror("socket creation failed");
     exit(EXIT_FAILURE);
   }
 
-  struct sockaddr_in server_addr, client_addr;
+  if ((client_socket_fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
+  {
+    perror("socket creation failed");
+    exit(EXIT_FAILURE);
+  }
+
+  struct sockaddr_in server_addr;
+
+  // Configure destination address
+  memset(&client_address, 0, sizeof(client_address));
+  client_address.sin_family = AF_INET;
+  client_address.sin_port = htons(client_port);
+  if (inet_pton(AF_INET, client_ip, &(client_address.sin_addr)) <= 0)
+  {
+    perror("invalid address");
+    exit(EXIT_FAILURE);
+  }
 
   // Configure server address
   memset(&server_addr, 0, sizeof(server_addr));
   server_addr.sin_family = AF_INET;
   server_addr.sin_addr.s_addr = INADDR_ANY;
-  server_addr.sin_port = htons(PORT);
+  server_addr.sin_port = htons(server_port);
 
   // Bind socket to the specified address and port
-  if (bind(sockfd, (const struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
+  if (bind(server_socket_fd, (const struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
   {
     perror("bind failed");
     exit(EXIT_FAILURE);
   }
 
   // Set socket to non-blocking mode
-  int flags = fcntl(sockfd, F_GETFL, 0);
-  fcntl(sockfd, F_SETFL, flags | O_NONBLOCK);
+  int flags = fcntl(server_socket_fd, F_GETFL, 0);
+  fcntl(server_socket_fd, F_SETFL, flags | O_NONBLOCK);
 }
