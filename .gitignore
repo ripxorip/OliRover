@@ -1,3 +1,4 @@
-
+controller/build/
+controller/compile_commands.json
 sim/build/
 sim/compile_commands.json
