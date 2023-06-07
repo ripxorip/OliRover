@@ -23,6 +23,8 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 
+#include "sim_api.h"
+
 // This header is required to register plugins. It's good practice to place it
 // in the cc file, like it's done here.
 #include <gz/plugin/Register.hh>
@@ -46,8 +48,6 @@ using namespace sim;
 void OliRoverInterface::PostUpdate(const gz::sim::UpdateInfo &_info,
                                    const gz::sim::EntityComponentManager &_ecm)
 {
-  this->leftWheelSpeed = 4.00;
-  this->rightWheelSpeed = -4.00;
 }
 
 void OliRoverInterface::PreUpdate(const gz::sim::UpdateInfo &_info,
@@ -109,16 +109,26 @@ void OliRoverInterface::Configure(const gz::sim::Entity &_entity,
 
 void OliRoverInterface::imu_callback(const gz::msgs::IMU &_msg)
 {
-  /* This will be the syncronization */
+  sim_api_sensor_data_t sensor_data;
   // gzmsg << "Received IMU message: " << _msg.linear_acceleration().x() << std::endl;
+
   /* To get actuator control */
   read_udp_data();
   /* To send sensor data to the simulator */
-  // send_udp_data();
+  sensor_data.linear_acceleration_x = _msg.linear_acceleration().x();
+  sensor_data.linear_acceleration_y = _msg.linear_acceleration().y();
+  sensor_data.linear_acceleration_z = _msg.linear_acceleration().z();
+
+  sensor_data.angular_velocity_x = _msg.angular_velocity().x();
+  sensor_data.angular_velocity_y = _msg.angular_velocity().y();
+  sensor_data.angular_velocity_z = _msg.angular_velocity().z();
+
+  sendto(client_socket_fd, (const char *)&sensor_data, sizeof(sim_api_sensor_data_t), 0, (const struct sockaddr *)&client_address, sizeof(client_address));
 }
 
 void OliRoverInterface::read_udp_data()
 {
+  sim_api_actuator_data_t actuator_data;
   struct sockaddr_in server_addr, client_addr;
   socklen_t addr_len = sizeof(client_addr);
 
@@ -130,14 +140,11 @@ void OliRoverInterface::read_udp_data()
   if (bytes_available > 0)
   {
     // Receive message
-    ssize_t recv_len = recvfrom(server_socket_fd, (char *)buffer, buffer_size, 0, (struct sockaddr *)&client_addr, &addr_len);
-    buffer[recv_len] = '\0';
-    gzmsg << "Client: " << buffer << std::endl;
-    count++;
-    if (count % 2 == 0)
+    ssize_t recv_len = recvfrom(server_socket_fd, (char *)&actuator_data, sizeof(sim_api_actuator_data_t), 0, (struct sockaddr *)&client_addr, &addr_len);
+    if (recv_len == sizeof(sim_api_actuator_data_t))
     {
-      const char *message = "Hello from simulator";
-      sendto(client_socket_fd, (const char *)message, strlen(message), 0, (const struct sockaddr *)&client_address, sizeof(client_address));
+      this->leftWheelSpeed = actuator_data.left;
+      this->rightWheelSpeed = actuator_data.right;
     }
   }
 }

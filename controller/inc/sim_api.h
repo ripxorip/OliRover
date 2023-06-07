@@ -2,9 +2,13 @@
 #define SIM_API
 
 typedef struct {
-    float x;
-    float y;
-    float z;
+    float linear_acceleration_x;
+    float linear_acceleration_y;
+    float linear_acceleration_z;
+
+    float angular_velocity_x;
+    float angular_velocity_y;
+    float angular_velocity_z;
 } sim_api_sensor_data_t;
 
 typedef struct {
