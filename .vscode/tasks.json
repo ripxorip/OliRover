@@ -4,9 +4,19 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "Build",
+            "label": "Build sim",
             "type": "shell",
             "command": "cd sim/build && make -j16 && cd .. && ./run.sh",
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            }
+        },
+        {
+            "label": "Build controller sim",
+            "type": "shell",
+            "command": "cd controller/build && make -j16 && ./OliRoverControllerSimulator",
             "problemMatcher": [],
             "group": {
                 "kind": "build",

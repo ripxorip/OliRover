@@ -43,14 +43,18 @@ void read_udp_data()
         if (sizeof(sim_api_sensor_data_t) == recv_len)
         {
             controller_actuators_t actuators;
-            sensors.x = sim_sensors.x;
-            sensors.y = sim_sensors.y;
-            sensors.z = sim_sensors.z;
+            sensors.linear_acceleration_x = sim_sensors.linear_acceleration_x;
+            sensors.linear_acceleration_y = sim_sensors.linear_acceleration_y;
+            sensors.linear_acceleration_z = sim_sensors.linear_acceleration_z;
+
+            sensors.angular_velocity_x = sim_sensors.angular_velocity_x;
+            sensors.angular_velocity_y = sim_sensors.angular_velocity_y;
+            sensors.angular_velocity_z = sim_sensors.angular_velocity_z;
 
             controller_process(&actuators, &sensors);
 
-            sim_actuators.left = actuators.left;
-            sim_actuators.right = actuators.right;
+            sim_actuators.left = actuators.left*20;
+            sim_actuators.right = actuators.right*20;
 
             sendto(client_socket_fd, (const char *)&sim_actuators, sizeof(sim_api_actuator_data_t), 0, (const struct sockaddr *)&dest_addr, sizeof(dest_addr));
         }

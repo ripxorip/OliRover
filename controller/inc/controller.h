@@ -11,9 +11,13 @@ typedef struct
 
 typedef struct
 {
-    float x;
-    float y;
-    float z;
+    float linear_acceleration_x;
+    float linear_acceleration_y;
+    float linear_acceleration_z;
+
+    float angular_velocity_x;
+    float angular_velocity_y;
+    float angular_velocity_z;
 } controller_sensors_t;
 
 void controller_init();
