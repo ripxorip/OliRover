@@ -13,8 +13,7 @@
 #define PORT 1338
 #define BUF_SIZE 1024
 
-#define CLIENT_IP "192.168.122.131"
-#define CLIENT_PORT 1337
+#define GZ_PORT 1337
 
 int server_socket_fd;
 int client_socket_fd;
@@ -63,6 +62,8 @@ void read_udp_data()
 
 int main(int argc, char *argv[])
 {
+    char *client_ip = getenv("GZ_IP");
+    printf("GZ_IP: %s\n", client_ip);
     /* Initialize the controller */
     controller_init();
     if ((server_socket_fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
@@ -86,8 +87,8 @@ int main(int argc, char *argv[])
     // Configure destination address
     memset(&dest_addr, 0, sizeof(dest_addr));
     dest_addr.sin_family = AF_INET;
-    dest_addr.sin_port = htons(CLIENT_PORT);
-    if (inet_pton(AF_INET, CLIENT_IP, &(dest_addr.sin_addr)) <= 0)
+    dest_addr.sin_port = htons(GZ_PORT);
+    if (inet_pton(AF_INET, client_ip, &(dest_addr.sin_addr)) <= 0)
     {
         perror("invalid address");
         exit(EXIT_FAILURE);
