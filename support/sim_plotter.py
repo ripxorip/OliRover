@@ -1,7 +1,10 @@
 import socket
 import json
+import os
 
-UDP_IP = "100.94.57.86"  # IP address the C program is sending to
+# Shall source the environment variables instead
+
+UDP_IP = "100.110.226.47"  # IP address the C program is sending to
 UDP_PORT = 1447  # Port number the C program is sending to
 BUFFER_SIZE = 1024
 
