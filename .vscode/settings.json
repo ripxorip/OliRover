@@ -67,6 +67,7 @@
         "typeindex": "cpp",
         "typeinfo": "cpp",
         "variant": "cpp",
-        "complex": "cpp"
+        "complex": "cpp",
+        "json.h": "c"
     }
 }

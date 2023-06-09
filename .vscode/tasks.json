@@ -16,7 +16,7 @@
         {
             "label": "Build controller sim",
             "type": "shell",
-            "command": "cd controller/build && make -j16 && GZ_IP=192.168.122.131 ./OliRoverControllerSimulator",
+            "command": "cd controller/build && make -j16 && source ../../sim_environment.sh && ./OliRoverControllerSimulator",
             "problemMatcher": [],
             "group": {
                 "kind": "build",

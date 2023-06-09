@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.0)
 project(OliRoverController)
 
+find_package(json-c REQUIRED)
+
 # Add compiler_commands.json generation
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -23,6 +25,8 @@ if (BUILD_WITH_SIMULATION)
         src/simulator.c
         ${SOURCES}
     )
+    target_link_libraries(OliRoverControllerSimulator
+        json-c)
     message("Building simulation build.")
 else()
     add_executable(OliRoverController
