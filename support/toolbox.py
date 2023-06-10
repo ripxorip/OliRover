@@ -1,3 +1,4 @@
+from collections import deque
 import socket
 import json
 import os
@@ -149,6 +150,7 @@ class ControlInterface(QWidget):
         self.sliders = {}
         self.text_inputs = {}
         self.gui_queue = gui_queue
+        self.counter = 0
         grid = QGridLayout()
 
         grid.addWidget(self.createSlider('Value 0', settings['Value 0']), 0, 0)
@@ -165,11 +167,31 @@ class ControlInterface(QWidget):
         self.add_plot('PID Tuning 2', grid, 4)
         self.add_plot('PID Tuning 3', grid, 5)
 
+        # Create circular buffer for plotting
+        self.plot_data = {}
+        self.plot_data['PID Tuning'] = deque(maxlen=1000)
+        self.plot_data['PID Tuning 2'] = deque(maxlen=1000)
+        self.plot_data['PID Tuning 3'] = deque(maxlen=1000)
+
         self.setLayout(grid)
 
         self.setWindowTitle("Robot Configurator")
         self.resize(1600, 1200)
         self.show()
+
+    def apply_plot_data(self):
+        # Get the data from the queue
+        self.plots['PID Tuning'].plot(self.plot_data['PID Tuning'], clear=True)
+        self.plots['PID Tuning 2'].plot(self.plot_data['PID Tuning 2'], clear=True)
+        self.plots['PID Tuning 3'].plot(self.plot_data['PID Tuning 3'], clear=True)
+
+    def update_plots(self, data):
+        if self.counter % 2 == 0:
+            self.plot_data['PID Tuning'].append(data['sensor_angular_velocity_z'])
+        if self.counter % 50 == 0:
+            self.apply_plot_data()
+            self.counter = 0
+        self.counter += 1
 
     def createSlider(self, text, setting):
         # FIXME shall be float: https://stackoverflow.com/questions/20632841/qt-horizontalslider-send-float-values
@@ -203,8 +225,8 @@ class ControlInterface(QWidget):
     def add_plot(self, name, grid, position):
         # Add a graph to the GUI
         self.plots[name] = pg.PlotWidget()
-        self.plots[name].setYRange(0, 4096)
-        self.plots[name].setXRange(0, 100)
+        self.plots[name].setYRange(-5.00, 5.00)
+        self.plots[name].setXRange(0, 1000)
         self.plots[name].showGrid(x=True, y=True)
         self.plots[name].setLabel('left', 'Y')
         self.plots[name].setLabel('bottom', 'X')
@@ -212,7 +234,7 @@ class ControlInterface(QWidget):
         grid.addWidget(self.plots[name], position, 0, 1, 3)
 
     def publish_setting(self):
-        #TODO Implement
+        #TODO Implement through the queue
         pass
 
     def slider_value_changed(self, setting):
@@ -230,7 +252,7 @@ class ControlInterface(QWidget):
 
     @pyqtSlot(object)
     def recv_log_data(self, data):
-        print(data)
+        self.update_plots(data)
         return
 
 """ # Shall source the environment variables instead
