@@ -169,9 +169,14 @@ class ControlInterface(QWidget):
 
         # Create circular buffer for plotting
         self.plot_data = {}
-        self.plot_data['PID Tuning'] = deque(maxlen=1000)
-        self.plot_data['PID Tuning 2'] = deque(maxlen=1000)
-        self.plot_data['PID Tuning 3'] = deque(maxlen=1000)
+        self.plot_data['PID Tuning'] =  []
+        self.plot_data['PID Tuning'].append(deque(maxlen=1000))
+
+        self.plot_data['PID Tuning 2'] =  []
+        self.plot_data['PID Tuning 2'].append(deque(maxlen=1000))
+
+        self.plot_data['PID Tuning 3'] =  []
+        self.plot_data['PID Tuning 3'].append(deque(maxlen=1000))
 
         self.setLayout(grid)
 
@@ -181,13 +186,14 @@ class ControlInterface(QWidget):
 
     def apply_plot_data(self):
         # Get the data from the queue
-        self.plots['PID Tuning'].plot(self.plot_data['PID Tuning'], clear=True)
-        self.plots['PID Tuning 2'].plot(self.plot_data['PID Tuning 2'], clear=True)
-        self.plots['PID Tuning 3'].plot(self.plot_data['PID Tuning 3'], clear=True)
+        for key in self.plots.keys():
+            self.plots[key].plot(self.plot_data[key][0], clear=True)
+            for i in range(1, len(self.plot_data[key])):
+                self.plots[key].plot(self.plot_data[key][i], clear=False)
 
     def update_plots(self, data):
         if self.counter % 2 == 0:
-            self.plot_data['PID Tuning'].append(data['sensor_angular_velocity_z'])
+            self.plot_data['PID Tuning'][0].append(data['sensor_angular_velocity_z'])
         if self.counter % 50 == 0:
             self.apply_plot_data()
             self.counter = 0
