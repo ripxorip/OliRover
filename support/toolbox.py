@@ -67,28 +67,39 @@ class Settings:
 
 
 
-class Pollthread(QThread):
-    magic_signal = pyqtSignal(object)
+class CommThread(QThread):
+    plot_data_signal = pyqtSignal(object)
 
-    def __init__(self, gui_queue):
+    def __init__(self, comm_queue):
         super().__init__()
-        self.gui_queue = gui_queue
-        self.shall_run = True
+        self.gui_queue = comm_queue
+        UDP_IP = os.environ['LOG_RECV_IP']
+        UDP_PORT = int(os.environ['LOG_RECV_PORT'])
+        self.buffer_size = 4096
+
+        # Create a UDP socket
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.sock.bind((UDP_IP, UDP_PORT))
 
     def run(self):
-        while(self.shall_run):
-            time.sleep(0.1)
+        while(True):
+            # Receive data from the socket
+            data, addr = self.sock.recvfrom(self.buffer_size)
 
-    def stop(self):
-        self.shall_run = False
+            # Convert the received byte data to a string
+            json_str = data.decode('utf-8')
+
+            # Parse the JSON string into a Python dictionary
+            json_data = json.loads(json_str)
+            self.plot_data_signal.emit(json_data)
 
 class PlotInterface(QWidget):
-    def __init__(self, settings, gui_queue):
+    def __init__(self, settings, comm_queue):
         super().__init__()
         self.plots = {}
         self.settings = settings
         self.sliders = {}
-        self.gui_queue = gui_queue
+        self.gui_queue = comm_queue
         grid = QGridLayout()
 
         self.add_plot('PID Tuning', grid, 0)
@@ -214,13 +225,12 @@ class ControlInterface(QWidget):
         self.sliders[setting].setValue(val)
         self.publish_setting()
 
-    def connect_magic(self, magic_signal):
-        magic_signal.magic_signal.connect(self.magic_slot)
+    def connect_plot_data(self, recv_log_data_signal):
+        recv_log_data_signal.plot_data_signal.connect(self.recv_log_data)
 
     @pyqtSlot(object)
-    def magic_slot(self, data):
-        self.shall_sil = True
-        self.close()
+    def recv_log_data(self, data):
+        print(data)
         return
 
 """ # Shall source the environment variables instead
@@ -254,12 +264,11 @@ def main():
 
     app = QApplication(sys.argv)
     q = queue.Queue()
-    widget = ControlInterface(settings, q)
-    pt = Pollthread(q)
-    widget.connect_magic(pt)
-    pt.start()
+    ci = ControlInterface(settings, q)
+    ct = CommThread(q)
+    ci.connect_plot_data(ct)
+    ct.start()
     app.exec_()
-    pt.stop()
 
 if __name__ == '__main__':
     main()
