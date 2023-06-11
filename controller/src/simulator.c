@@ -14,8 +14,9 @@
 int controller_sim_recv_socket_fd;
 int gz_sim_recv_socket_fd;
 int log_recv_socket_fd;
+int controller_sim_commands_socket_fd;
 
-struct sockaddr_in controller_sim_recv_addr, gz_sim_recv_addr, log_recv_addr;
+struct sockaddr_in controller_sim_recv_addr, gz_sim_recv_addr, log_recv_addr, controller_sim_commands_addr;
 
 void send_log_data(controller_actuators_t *actuators, controller_sensors_t *sensors)
 {
@@ -53,6 +54,9 @@ void read_udp_data()
     struct sockaddr_in server_addr, client_addr;
     socklen_t addr_len = sizeof(client_addr);
 
+    #define BUFFER_SIZE 4096
+    static uint8_t buffer[BUFFER_SIZE];
+
     // Check if data is available
     int bytes_available;
     ioctl(controller_sim_recv_socket_fd, FIONREAD, &bytes_available);
@@ -81,6 +85,17 @@ void read_udp_data()
             send_log_data(&actuators, &sensors);
         }
     }
+
+    // Check if data is available
+    bytes_available;
+    ioctl(controller_sim_commands_socket_fd, FIONREAD, &bytes_available);
+
+    if (bytes_available > 0)
+    {
+        ssize_t recv_len = recvfrom(controller_sim_commands_socket_fd, &buffer, BUFFER_SIZE, 0, (struct sockaddr *)&client_addr, &addr_len);
+        printf("Received: %s\n", buffer);
+        /* TODO Parse the JSON */
+    }
 }
 
 int main(int argc, char *argv[])
@@ -103,6 +118,12 @@ int main(int argc, char *argv[])
     printf("LOG_RECV_PORT: %s\n", log_recv_port);
     int log_recv_port_int = atoi(log_recv_port);
 
+    char *controller_sim_commands_ip = getenv("CONTROLLER_SIM_COMMANDS_IP");
+    printf("CONTROLLER_SIM_COMMANDS_IP: %s\n", controller_sim_commands_ip);
+
+    int controller_sim_commands_port_int = atoi(getenv("CONTROLLER_SIM_COMMANDS_PORT"));
+    printf("CONTROLLER_SIM_COMMANDS_PORT: %d\n", controller_sim_commands_port_int);
+
     /* Initialize the controller */
     controller_init();
     if ((controller_sim_recv_socket_fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
@@ -123,10 +144,21 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
+    if ((controller_sim_commands_socket_fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
+    {
+        perror("socket creation failed");
+        exit(EXIT_FAILURE);
+    }
+
     memset(&controller_sim_recv_addr, 0, sizeof(controller_sim_recv_addr));
     controller_sim_recv_addr.sin_family = AF_INET;
     controller_sim_recv_addr.sin_addr.s_addr = INADDR_ANY;
     controller_sim_recv_addr.sin_port = htons(controller_sim_recv_port_int);
+
+    memset(&controller_sim_commands_addr, 0, sizeof(controller_sim_commands_addr));
+    controller_sim_commands_addr.sin_family = AF_INET;
+    controller_sim_commands_addr.sin_addr.s_addr = INADDR_ANY;
+    controller_sim_commands_addr.sin_port = htons(controller_sim_commands_port_int);
 
     memset(&gz_sim_recv_addr, 0, sizeof(gz_sim_recv_addr));
     gz_sim_recv_addr.sin_family = AF_INET;
@@ -159,6 +191,17 @@ int main(int argc, char *argv[])
     // Set socket to non-blocking mode
     int flags = fcntl(controller_sim_recv_socket_fd, F_GETFL, 0);
     fcntl(controller_sim_recv_socket_fd, F_SETFL, flags | O_NONBLOCK);
+
+    // Bind socket to the specified address and port
+    if (bind(controller_sim_commands_socket_fd, (const struct sockaddr *)&controller_sim_commands_addr, sizeof(controller_sim_commands_addr)) < 0)
+    {
+        perror("bind failed");
+        exit(EXIT_FAILURE);
+    }
+
+    // Set socket to non-blocking mode
+    flags = fcntl(controller_sim_commands_socket_fd, F_GETFL, 0);
+    fcntl(controller_sim_commands_socket_fd, F_SETFL, flags | O_NONBLOCK);
 
     int counter = 0;
     while (1)

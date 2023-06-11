@@ -74,6 +74,7 @@ class CommThread(QThread):
     def __init__(self, comm_queue):
         super().__init__()
         self.gui_queue = comm_queue
+
         UDP_IP = os.environ['LOG_RECV_IP']
         UDP_PORT = int(os.environ['LOG_RECV_PORT'])
         self.buffer_size = 4096
@@ -81,6 +82,10 @@ class CommThread(QThread):
         # Create a UDP socket
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.bind((UDP_IP, UDP_PORT))
+
+        self.CONTROLLER_SIM_COMMANDS_IP = os.environ['CONTROLLER_SIM_COMMANDS_IP']
+        self.CONTROLLER_SIM_COMMANDS_PORT = int(os.environ['CONTROLLER_SIM_COMMANDS_PORT'])
+        self.controller_sim_command_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     def run(self):
         while(True):
@@ -94,6 +99,11 @@ class CommThread(QThread):
             json_data = json.loads(json_str)
             self.plot_data_signal.emit(json_data)
 
+            while not self.gui_queue.empty():
+                json_data = self.gui_queue.get()
+                json_str = json.dumps(json_data)
+                self.controller_sim_command_sock.sendto(json_str.encode('utf-8'), (self.CONTROLLER_SIM_COMMANDS_IP, self.CONTROLLER_SIM_COMMANDS_PORT))
+
 class PlotInterface(QWidget):
     def __init__(self, settings, comm_queue):
         super().__init__()
@@ -106,24 +116,6 @@ class PlotInterface(QWidget):
         self.add_plot('PID Tuning', grid, 0)
         self.add_plot('PID Tuning 2', grid, 1)
         self.add_plot('PID Tuning 3', grid, 2)
-
-        # ======================= Example code for plotting
-        """ x_data = []
-        y_data = []
-        for i in range(0, 100):
-            y_data.append(math.sin(i/10) * 4096)
-            x_data.append(i)
-        self.graph.plot(x_data, y_data, clear=True)
-
-        x_data = []
-        y_data = []
-        for i in range(0, 100):
-            y_data.append(math.sin(i/3) * 4096)
-            x_data.append(i)
-        # Plot the data using a red pen with a thickness of 1 pixel
-        self.graph.plot(x_data, y_data, pen=(255, 0, 0), clear=False) """
-        # ================= Example code for plotting end
-
 
         self.setLayout(grid)
 
@@ -239,19 +231,18 @@ class ControlInterface(QWidget):
         self.plots[name].setTitle(name)
         grid.addWidget(self.plots[name], position, 0, 1, 3)
 
-    def publish_setting(self):
-        #TODO Implement through the queue
-        pass
+    def publish_setting(self, setting):
+        self.gui_queue.put({'setting': setting, 'value': self.settings[setting]['current_value']})
 
     def slider_value_changed(self, setting):
         self.settings[setting]['current_value'] = self.sliders[setting].value()
         self.text_inputs[setting].setText(str(self.sliders[setting].value()))
-        self.publish_setting()
+        self.publish_setting(setting)
 
     def line_edit_value_changed(self, setting):
         val = self.settings[setting]['current_value'] = float(self.text_inputs[setting].text())
         self.sliders[setting].setValue(val)
-        self.publish_setting()
+        self.publish_setting(setting)
 
     def connect_plot_data(self, recv_log_data_signal):
         recv_log_data_signal.plot_data_signal.connect(self.recv_log_data)
@@ -261,30 +252,8 @@ class ControlInterface(QWidget):
         self.update_plots(data)
         return
 
-""" # Shall source the environment variables instead
-# Read UDP_IP and UDP_PORT from the environment
-UDP_IP = os.environ['LOG_RECV_IP']
-UDP_PORT = int(os.environ['LOG_RECV_PORT'])
-
-BUFFER_SIZE = 4096
-
-# Create a UDP socket
-sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-sock.bind((UDP_IP, UDP_PORT))
-
-while True:
-    # Receive data from the socket
-    data, addr = sock.recvfrom(BUFFER_SIZE)
-
-    # Convert the received byte data to a string
-    json_str = data.decode('utf-8')
-
-    # Parse the JSON string into a Python dictionary
-    json_data = json.loads(json_str)
-    print(json_data ) """
-
-
 def main():
+    #FIXME The current settings shall come from the robot instead, sent using a custom message
     settings = Settings.settings
     for k in settings:
         s = settings[k]
