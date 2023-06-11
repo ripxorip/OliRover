@@ -33,8 +33,35 @@ void send_log_data(controller_actuators_t *actuators, controller_sensors_t *sens
     json_object_object_add(json_obj, "sensor_angular_velocity_y", json_object_new_double(sensors->angular_velocity_y));
     json_object_object_add(json_obj, "sensor_angular_velocity_z", json_object_new_double(sensors->angular_velocity_z));
 
-    const char *json_string = json_object_to_json_string(json_obj);
+    struct json_object *root = json_object_new_object();
+    json_object_object_add(root, "type", json_object_new_string("log"));
+    json_object_object_add(root, "data", json_obj);
 
+    const char *json_string = json_object_to_json_string(root);
+
+    if (sendto(log_recv_socket_fd, json_string, strlen(json_string), 0, (const struct sockaddr *)&log_recv_addr, sizeof(log_recv_addr)) < 0)
+    {
+        perror("sendto failed");
+        exit(EXIT_FAILURE);
+    }
+    json_object_put(json_obj);
+}
+
+void send_parameters() {
+    struct json_object *json_obj = json_object_new_object();
+    for (int i = 0; i < CONTROLLER_PARAMS_NUM_PARAMS; i++) {
+        char name[64];
+        controller_get_name_from_param(i, name, sizeof(name));
+        float value;
+        controller_get_param(i, &value);
+        json_object_object_add(json_obj, name, json_object_new_double(value));
+    }
+
+    struct json_object *root = json_object_new_object();
+    json_object_object_add(root, "type", json_object_new_string("parameters"));
+    json_object_object_add(root, "data", json_obj);
+
+    const char *json_string = json_object_to_json_string(root);
     if (sendto(log_recv_socket_fd, json_string, strlen(json_string), 0, (const struct sockaddr *)&log_recv_addr, sizeof(log_recv_addr)) < 0)
     {
         perror("sendto failed");
@@ -93,8 +120,36 @@ void read_udp_data()
     if (bytes_available > 0)
     {
         ssize_t recv_len = recvfrom(controller_sim_commands_socket_fd, &buffer, BUFFER_SIZE, 0, (struct sockaddr *)&client_addr, &addr_len);
-        printf("Received: %s\n", buffer);
-        /* TODO Parse the JSON */
+        buffer[recv_len] = '\0';
+        struct json_object *root = json_tokener_parse((char *)buffer);
+        struct json_object *type;
+        json_object_object_get_ex(root, "type", &type);
+        const char *type_string = json_object_get_string(type);
+        if (strcmp(type_string, "request_settings") == 0) {
+            send_parameters();
+        }
+        else if (strcmp(type_string, "setting") == 0) {
+            struct json_object *data;
+            json_object_object_get_ex(root, "data", &data);
+            const char* name = json_object_get_string(json_object_object_get(data, "setting"));
+            float value = json_object_get_double(json_object_object_get(data, "value"));
+            uint8_t found = 0;
+            for (int i = 0; i < CONTROLLER_PARAMS_NUM_PARAMS; i++) {
+                char param_name[64];
+                controller_get_name_from_param(i, param_name, sizeof(param_name));
+                if (strcmp(param_name, name) == 0) {
+                    controller_set_param(i, value);
+                    found = 1;
+                    break;
+                }
+            }
+            if (!found) {
+                printf("ERROR: Unknown parameter: %s\n", name);
+            }
+        }
+        else {
+            printf("Unknown command: %s\n", type_string);
+        }
     }
 }
 

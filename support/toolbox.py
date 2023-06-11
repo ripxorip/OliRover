@@ -14,55 +14,45 @@ import queue
 
 class Settings:
     settings = {
-        'Value 0' : {
-            'min': 0,
-            'max': 100,
-            'default': 50
+        'kp' : {
+            'min': 0.00,
+            'max': 5.00,
         },
-        'Value 1' : {
-            'min': 0,
-            'max': 100,
-            'default': 50
+        'ki' : {
+            'min': 0.00,
+            'max': 5.00,
         },
-        'Value 2' : {
-            'min': 0,
-            'max': 100,
-            'default': 50
+        'kd' : {
+            'min': 0.00,
+            'max': 5.00,
         },
-        'Value 3' : {
+        'Placeholder 3' : {
             'min': 0,
             'max': 100,
-            'default': 50
         },
-        'Value 4' : {
+        'Placeholder 4' : {
             'min': 0,
             'max': 100,
-            'default': 50
         },
-        'Value 5' : {
+        'Placeholder 5' : {
             'min': 0,
             'max': 100,
-            'default': 50
         },
-        'Value 6' : {
+        'Placeholder 6' : {
             'min': 0,
             'max': 100,
-            'default': 50
         },
-        'Value 7' : {
+        'Placeholder 7' : {
             'min': 0,
             'max': 100,
-            'default': 50
         },
-        'Value 8' : {
+        'Placeholder 8' : {
             'min': 0,
             'max': 100,
-            'default': 50
         },
-        'Value 9' : {
+        'Placeholder 9' : {
             'min': 0,
             'max': 100,
-            'default': 50
         }
     }
 
@@ -73,7 +63,7 @@ class CommThread(QThread):
 
     def __init__(self, comm_queue):
         super().__init__()
-        self.gui_queue = comm_queue
+        self.comm_queu = comm_queue
 
         UDP_IP = os.environ['LOG_RECV_IP']
         UDP_PORT = int(os.environ['LOG_RECV_PORT'])
@@ -87,6 +77,8 @@ class CommThread(QThread):
         self.CONTROLLER_SIM_COMMANDS_PORT = int(os.environ['CONTROLLER_SIM_COMMANDS_PORT'])
         self.controller_sim_command_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
+        self.has_received_settings = False
+
     def run(self):
         while(True):
             # Receive data from the socket
@@ -97,63 +89,45 @@ class CommThread(QThread):
 
             # Parse the JSON string into a Python dictionary
             json_data = json.loads(json_str)
+            if (json_data['type'] == 'parameters'):
+                self.has_received_settings = True
             self.plot_data_signal.emit(json_data)
 
-            while not self.gui_queue.empty():
-                json_data = self.gui_queue.get()
+            if not self.has_received_settings:
+                req = {'type': 'request_settings'}
+                json_str = json.dumps(req)
+                self.controller_sim_command_sock.sendto(json_str.encode('utf-8'), (self.CONTROLLER_SIM_COMMANDS_IP, self.CONTROLLER_SIM_COMMANDS_PORT))
+
+            while not self.comm_queu.empty():
+                json_data = self.comm_queu.get()
                 json_str = json.dumps(json_data)
                 self.controller_sim_command_sock.sendto(json_str.encode('utf-8'), (self.CONTROLLER_SIM_COMMANDS_IP, self.CONTROLLER_SIM_COMMANDS_PORT))
 
-class PlotInterface(QWidget):
+class ControlInterface(QWidget):
     def __init__(self, settings, comm_queue):
         super().__init__()
         self.plots = {}
         self.settings = settings
         self.sliders = {}
-        self.gui_queue = comm_queue
-        grid = QGridLayout()
-
-        self.add_plot('PID Tuning', grid, 0)
-        self.add_plot('PID Tuning 2', grid, 1)
-        self.add_plot('PID Tuning 3', grid, 2)
-
-        self.setLayout(grid)
-
-        self.setWindowTitle("Robot Configurator")
-        self.resize(1600, 1200)
-        self.show()
-
-    def add_plot(self, name, grid, position):
-        # Add a graph to the GUI
-        self.plots[name] = pg.PlotWidget()
-        self.plots[name].setYRange(0, 4096)
-        self.plots[name].setXRange(0, 100)
-        self.plots[name].showGrid(x=True, y=True)
-        self.plots[name].setLabel('left', 'Y')
-        self.plots[name].setLabel('bottom', 'X')
-        self.plots[name].setTitle(name)
-        grid.addWidget(self.plots[name], position, 0, 1, 2)
-
-class ControlInterface(QWidget):
-    def __init__(self, settings, gui_queue):
-        super().__init__()
-        self.plots = {}
-        self.settings = settings
-        self.sliders = {}
         self.text_inputs = {}
-        self.gui_queue = gui_queue
+        self.comm_queue = comm_queue
         self.counter = 0
         grid = QGridLayout()
 
-        grid.addWidget(self.createSlider('Value 0', settings['Value 0']), 0, 0)
-        grid.addWidget(self.createSlider('Value 1', settings['Value 1']), 1, 0)
-        grid.addWidget(self.createSlider('Value 2', settings['Value 2']), 0, 1)
-        grid.addWidget(self.createSlider('Value 3', settings['Value 3']), 1, 1)
-        grid.addWidget(self.createSlider('Value 4', settings['Value 4']), 0, 2)
-        grid.addWidget(self.createSlider('Value 5', settings['Value 5']), 1, 2)
-        grid.addWidget(self.createSlider('Value 6', settings['Value 6']), 2, 0)
-        grid.addWidget(self.createSlider('Value 7', settings['Value 7']), 2, 1)
-        grid.addWidget(self.createSlider('Value 8', settings['Value 8']), 2, 2)
+        grid.addWidget(self.createSlider('kp', settings['kp']), 0, 0)
+        grid.addWidget(self.createSlider('ki', settings['ki']), 0, 1)
+        grid.addWidget(self.createSlider('kd', settings['kd']), 0, 2)
+
+        grid.addWidget(self.createSlider('Placeholder 3', settings['Placeholder 3']), 1, 0)
+        grid.addWidget(self.createSlider('Placeholder 4', settings['Placeholder 4']), 1, 1)
+        grid.addWidget(self.createSlider('Placeholder 5', settings['Placeholder 5']), 1, 2)
+        grid.addWidget(self.createSlider('Placeholder 6', settings['Placeholder 6']), 2, 0)
+        grid.addWidget(self.createSlider('Placeholder 7', settings['Placeholder 7']), 2, 1)
+        grid.addWidget(self.createSlider('Placeholder 8', settings['Placeholder 8']), 2, 2)
+
+         # Disable the sliders until each value has been received
+        for key in self.sliders.keys():
+            self.sliders[key].setEnabled(False)
 
         self.add_plot('PID Tuning', grid, 3)
         self.add_plot('PID Tuning 2', grid, 4)
@@ -192,17 +166,20 @@ class ControlInterface(QWidget):
         self.counter += 1
 
     def createSlider(self, text, setting):
-        # FIXME shall be float: https://stackoverflow.com/questions/20632841/qt-horizontalslider-send-float-values
         groupBox = QGroupBox(text)
 
         slider = QSlider(Qt.Horizontal)
         slider.setFocusPolicy(Qt.StrongFocus)
         slider.setTickPosition(QSlider.TicksBothSides)
-        slider.setTickInterval(int((setting['max']-setting['min'])/10))
+
+        range = setting['max'] - setting['min']
+        slider.step = range / 100.00
+        slider.setRange(0, 100)
+        slider.setTickInterval(10)
         slider.setSingleStep(1)
-        slider.setMinimum(setting['min'])
-        slider.setMaximum(setting['max'])
-        slider.setValue(setting['current_value'])
+        slider.setMinimum(0)
+        slider.setMaximum(100)
+        slider.setValue(0)
         slider.sliderMoved.connect(lambda: self.slider_value_changed(text))
 
         text_input = QLineEdit()
@@ -232,16 +209,18 @@ class ControlInterface(QWidget):
         grid.addWidget(self.plots[name], position, 0, 1, 3)
 
     def publish_setting(self, setting):
-        self.gui_queue.put({'setting': setting, 'value': self.settings[setting]['current_value']})
+        self.comm_queue.put({'type': 'setting', 'data': {'setting': setting, 'value': self.settings[setting]['current_value']}})
 
     def slider_value_changed(self, setting):
-        self.settings[setting]['current_value'] = self.sliders[setting].value()
-        self.text_inputs[setting].setText(str(self.sliders[setting].value()))
+        self.settings[setting]['current_value'] = self.sliders[setting].value() * self.sliders[setting].step
+        num = self.sliders[setting].value() * self.sliders[setting].step
+        num = round(num, 4)
+        self.text_inputs[setting].setText(str(num))
         self.publish_setting(setting)
 
     def line_edit_value_changed(self, setting):
         val = self.settings[setting]['current_value'] = float(self.text_inputs[setting].text())
-        self.sliders[setting].setValue(val)
+        self.sliders[setting].setValue(int(val / self.sliders[setting].step))
         self.publish_setting(setting)
 
     def connect_plot_data(self, recv_log_data_signal):
@@ -249,15 +228,23 @@ class ControlInterface(QWidget):
 
     @pyqtSlot(object)
     def recv_log_data(self, data):
-        self.update_plots(data)
+        if data['type'] == 'log':
+            self.update_plots(data['data'])
+        elif data['type'] == 'parameters':
+            for key in data['data']:
+                self.sliders[key].setEnabled(True)
+                self.settings[key]['current_value'] = data['data'][key]
+                num = data['data'][key]
+                num = round(num, 4)
+                self.text_inputs[key].setText(str(num))
+                self.sliders[key].setValue(int(num / self.sliders[key].step))
         return
 
 def main():
-    #FIXME The current settings shall come from the robot instead, sent using a custom message
     settings = Settings.settings
     for k in settings:
         s = settings[k]
-        s['current_value'] = s['default']
+        s['current_value'] = s['min']
 
     app = QApplication(sys.argv)
     q = queue.Queue()

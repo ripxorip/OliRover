@@ -1,7 +1,21 @@
-#ifndef CONTROLLER_H
-#define CONTROLLER_H
+#ifndef CONTROLLER
+#define CONTROLLER
 
 #include <stdint.h>
+
+typedef enum
+{
+    CONTROLLER_PARAMS_KP = 0,
+    CONTROLLER_PARAMS_KI,
+    CONTROLLER_PARAMS_KD,
+    CONTROLLER_PARAMS_NUM_PARAMS
+} controller_params_t;
+
+typedef struct
+{
+    float x;
+    float y;
+} controller_input_t;
 
 typedef struct
 {
@@ -22,5 +36,12 @@ typedef struct
 
 void controller_init();
 void controller_process(controller_actuators_t *actuators, controller_sensors_t *sensors);
+void controller_set_input(controller_input_t *input);
+void controller_get_num_params(uint8_t *num_params);
 
-#endif /* CONTROLLER_H */
+void controller_set_param(controller_params_t param, float value);
+void controller_get_param(controller_params_t param, float *value);
+
+void controller_get_name_from_param(controller_params_t param, char *name, uint8_t name_len);
+
+#endif /* CONTROLLER */
