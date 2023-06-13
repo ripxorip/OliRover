@@ -5,11 +5,14 @@ import os
 import sys
 import time
 import math
+import typing
+import evdev
+from evdev import InputDevice, categorize, ecodes
 
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore
 from PyQt5.QtWidgets import QApplication, QWidget, QGridLayout, QLabel, QGroupBox, QRadioButton, QSlider, QVBoxLayout, QHBoxLayout, QTextEdit, QLineEdit
-from PyQt5.QtCore import pyqtSlot, QThread, pyqtSignal, Qt
+from PyQt5.QtCore import QObject, pyqtSlot, QThread, pyqtSignal, Qt
 import queue
 
 class Settings:
@@ -56,7 +59,24 @@ class Settings:
         }
     }
 
+class JoystickThread(QThread):
+    def __init__(self, joystick_evdev, comm_queue):
+        super().__init__()
+        self.joystick_evdev = joystick_evdev
+        self.comm_queue = comm_queue
+        self.dev = InputDevice(self.joystick_evdev)
 
+    def run(self):
+        self.dev.grab()
+        for event in self.dev.read_loop():
+            ev = categorize(event)
+            if ecodes.bytype[ev.event.type][ev.event.code] == 'ABS_RY':
+                value = ev.event.value / 32768
+                self.comm_queue.put({'type': 'joystick', 'axis': 'y', 'value': value})
+
+            elif ecodes.bytype[ev.event.type][ev.event.code] == 'ABS_RX':
+                value = ev.event.value / 32768
+                self.comm_queue.put({'type': 'joystick', 'axis': 'x', 'value': value})
 
 class CommThread(QThread):
     plot_data_signal = pyqtSignal(object)
@@ -241,6 +261,12 @@ class ControlInterface(QWidget):
         return
 
 def main():
+    input_dev = None
+    devices = [evdev.InputDevice(path) for path in evdev.list_devices()]
+    for device in devices:
+        if 'Logitech Gamepad F310' == device.name:
+            input_dev = device.path
+
     settings = Settings.settings
     for k in settings:
         s = settings[k]
@@ -250,8 +276,10 @@ def main():
     q = queue.Queue()
     ci = ControlInterface(settings, q)
     ct = CommThread(q)
+    jt = JoystickThread(input_dev, q)
     ci.connect_plot_data(ct)
     ct.start()
+    jt.start()
     app.exec_()
 
 if __name__ == '__main__':
