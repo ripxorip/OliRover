@@ -2,7 +2,6 @@
 
 static struct
 {
-    controller_input_t input;
     float params[CONTROLLER_PARAMS_NUM_PARAMS];
 } internal = {0};
 
@@ -14,14 +13,13 @@ void controller_init() {
     internal.params[CONTROLLER_PARAMS_KD] = 0.005;
 }
 
-void controller_process(controller_actuators_t *actuators, controller_sensors_t *sensors) {
-    /* Just to see that the pipeline works */
-    actuators->left = internal.params[CONTROLLER_PARAMS_KP];
-    actuators->right = -0.8;
-}
-
-void controller_set_input(controller_input_t *input) {
-    internal.input = *input;
+void controller_process(controller_actuators_t *actuators, controller_sensors_t *sensors, controller_input_t *input) {
+    /* actuators->left = internal.params[CONTROLLER_PARAMS_KP];
+    actuators->right = -0.8; */
+    actuators->left = input->y;
+    actuators->right = input->y;
+    actuators->left += input->x;
+    actuators->right -= input->x;
 }
 
 void controller_get_num_params(uint8_t *num_params) {

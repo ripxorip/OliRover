@@ -11,12 +11,27 @@
 #include "controller.h"
 #include "sim_api.h"
 
+static struct {
+    struct {
+        float y;
+        float x;
+    } input;
+} internal = {0};
+
 int controller_sim_recv_socket_fd;
 int gz_sim_recv_socket_fd;
 int log_recv_socket_fd;
 int controller_sim_commands_socket_fd;
 
 struct sockaddr_in controller_sim_recv_addr, gz_sim_recv_addr, log_recv_addr, controller_sim_commands_addr;
+
+void handle_joystick_data(const char *axis, float value) {
+    if (strcmp(axis, "y") == 0) {
+        internal.input.y = -value;
+    } else if (strcmp(axis, "x") == 0) {
+        internal.input.x = value;
+    }
+}
 
 void send_log_data(controller_actuators_t *actuators, controller_sensors_t *sensors)
 {
@@ -102,7 +117,10 @@ void read_udp_data()
             sensors.angular_velocity_y = sim_sensors.angular_velocity_y;
             sensors.angular_velocity_z = sim_sensors.angular_velocity_z;
 
-            controller_process(&actuators, &sensors);
+            controller_input_t input;
+            input.x = internal.input.x;
+            input.y = internal.input.y;
+            controller_process(&actuators, &sensors, &input);
 
             sim_actuators.left = actuators.left * 20;
             sim_actuators.right = actuators.right * 20;
@@ -146,6 +164,13 @@ void read_udp_data()
             if (!found) {
                 printf("ERROR: Unknown parameter: %s\n", name);
             }
+        }
+        else if (strcmp(type_string, "joystick") == 0) {
+            struct json_object *data;
+            json_object_object_get_ex(root, "data", &data);
+            const char* axis = json_object_get_string(json_object_object_get(data, "axis"));
+            float value = json_object_get_double(json_object_object_get(data, "value"));
+            handle_joystick_data(axis, value);
         }
         else {
             printf("Unknown command: %s\n", type_string);

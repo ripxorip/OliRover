@@ -60,23 +60,30 @@ class Settings:
     }
 
 class JoystickThread(QThread):
-    def __init__(self, joystick_evdev, comm_queue):
+    def __init__(self, joystick_evdev, deadband, comm_queue):
         super().__init__()
         self.joystick_evdev = joystick_evdev
         self.comm_queue = comm_queue
         self.dev = InputDevice(self.joystick_evdev)
+        self.deadband = deadband
 
     def run(self):
         self.dev.grab()
         for event in self.dev.read_loop():
             ev = categorize(event)
-            if ecodes.bytype[ev.event.type][ev.event.code] == 'ABS_RY':
-                value = ev.event.value / 32768
-                self.comm_queue.put({'type': 'joystick', 'axis': 'y', 'value': value})
+            if ecodes.bytype[ev.event.type][ev.event.code] == 'ABS_Y':
+                value = ev.event.value
+                if abs(value) < self.deadband:
+                    value = 0
+                value = value / 32768
+                self.comm_queue.put({'type': 'joystick', 'data': {'axis': 'y', 'value': value}})
 
-            elif ecodes.bytype[ev.event.type][ev.event.code] == 'ABS_RX':
-                value = ev.event.value / 32768
-                self.comm_queue.put({'type': 'joystick', 'axis': 'x', 'value': value})
+            elif ecodes.bytype[ev.event.type][ev.event.code] == 'ABS_X':
+                value = ev.event.value
+                if abs(value) < self.deadband:
+                    value = 0
+                value = value / 32768
+                self.comm_queue.put({'type': 'joystick', 'data': {'axis': 'x', 'value': value}})
 
 class CommThread(QThread):
     plot_data_signal = pyqtSignal(object)
@@ -263,8 +270,10 @@ class ControlInterface(QWidget):
 def main():
     input_dev = None
     devices = [evdev.InputDevice(path) for path in evdev.list_devices()]
+    joystick_name = os.environ.get('CONTROLLER_SIM_JOYSTICK')
     for device in devices:
-        if 'Logitech Gamepad F310' == device.name:
+        if joystick_name == device.name:
+            print('Found joystick: {}'.format(device.name))
             input_dev = device.path
 
     settings = Settings.settings
@@ -276,7 +285,8 @@ def main():
     q = queue.Queue()
     ci = ControlInterface(settings, q)
     ct = CommThread(q)
-    jt = JoystickThread(input_dev, q)
+    if input_dev is not None:
+        jt = JoystickThread(input_dev, int(os.environ.get("CONTROLLER_SIM_JOYSTICK_DEADBAND")) ,q)
     ci.connect_plot_data(ct)
     ct.start()
     jt.start()
