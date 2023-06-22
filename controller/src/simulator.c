@@ -24,7 +24,7 @@ int gz_sim_recv_socket_fd;
 int rover_rx_socket_fd;
 int rover_tx_socket_fd;
 
-struct sockaddr_in controller_sim_recv_addr, gz_sim_recv_addr, log_recv_addr, rover_tx_addr, rover_rx_addr;
+struct sockaddr_in controller_sim_recv_addr, gz_sim_recv_addr, rover_tx_addr, rover_rx_addr;
 
 void controller_write_fn(uint8_t *data, uint16_t len)
 {
@@ -96,26 +96,16 @@ void read_udp_data()
 
 int main(int argc, char *argv[])
 {
-    char *gz_recv_ip = getenv("GZ_SIM_RECV_IP");
-    printf("GZ_SIM_RECV_IP: %s\n", gz_recv_ip);
+    char *gz_recv_ip = getenv("GZ_SIM_RX_IP");
+    printf("GZ_SIM_RX_IP: %s\n", gz_recv_ip);
 
-    char *gz_recv_port = getenv("GZ_SIM_RECV_PORT");
-    printf("GZ_SIM_RECV_PORT: %s\n", gz_recv_port);
+    char *gz_recv_port = getenv("GZ_SIM_RX_PORT");
+    printf("GZ_SIM_RX_PORT: %s\n", gz_recv_port);
     int gz_recv_port_int = atoi(gz_recv_port);
 
-    char *controller_sim_recv_port = getenv("CONTROLLER_SIM_RECV_PORT");
-    printf("CONTROLLER_SIM_RECV_PORT: %s\n", controller_sim_recv_port);
+    char *controller_sim_recv_port = getenv("GZ_SIM_TX_PORT");
+    printf("GZ_SIM_TX_PORT: %s\n", controller_sim_recv_port);
     int controller_sim_recv_port_int = atoi(controller_sim_recv_port);
-
-    char *log_recv_ip = getenv("LOG_RECV_IP");
-    printf("LOG_RECV_IP: %s\n", log_recv_ip);
-
-    char *log_recv_port = getenv("LOG_RECV_PORT");
-    printf("LOG_RECV_PORT: %s\n", log_recv_port);
-    int log_recv_port_int = atoi(log_recv_port);
-
-    char *controller_sim_commands_ip = getenv("CONTROLLER_SIM_COMMANDS_IP");
-    printf("CONTROLLER_SIM_COMMANDS_IP: %s\n", controller_sim_commands_ip);
 
     int rover_tx_port_int = atoi(getenv("CONTROLLER_RX_PORT"));
     printf("CONTROLLER_RX_PORT: %d\n", rover_tx_port_int);
@@ -173,11 +163,6 @@ int main(int argc, char *argv[])
     gz_sim_recv_addr.sin_family = AF_INET;
     gz_sim_recv_addr.sin_port = htons(gz_recv_port_int);
 
-    memset(&log_recv_addr, 0, sizeof(log_recv_addr));
-    log_recv_addr.sin_family = AF_INET;
-    log_recv_addr.sin_addr.s_addr = INADDR_ANY;
-    log_recv_addr.sin_port = htons(log_recv_port_int);
-
     if (inet_pton(AF_INET, gz_recv_ip, &(gz_sim_recv_addr.sin_addr)) <= 0)
     {
         perror("invalid address");
@@ -185,12 +170,6 @@ int main(int argc, char *argv[])
     }
 
     if (inet_pton(AF_INET, rover_rx_ip, &(rover_rx_addr.sin_addr)) <= 0)
-    {
-        perror("invalid address");
-        exit(EXIT_FAILURE);
-    }
-
-    if (inet_pton(AF_INET, log_recv_ip, &(log_recv_addr.sin_addr)) <= 0)
     {
         perror("invalid address");
         exit(EXIT_FAILURE);
