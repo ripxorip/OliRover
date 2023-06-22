@@ -12,11 +12,13 @@ option(BUILD_WITH_SIMULATION "Build with simulation" OFF)
 # Define the source files for your project
 set(SOURCES
     src/controller.c
+    src/cbwo.c
 )
 
 # Define the include directories for your project
 include_directories(
     inc
+    ../interface
 )
 
 # Create an executable target for the simulation code

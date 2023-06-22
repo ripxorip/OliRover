@@ -10,7 +10,6 @@
 
 #include "controller.h"
 #include "sim_api.h"
-#include "interface.h"
 
 static struct {
     struct {
@@ -24,28 +23,67 @@ int gz_sim_recv_socket_fd;
 int rover_rx_socket_fd;
 int rover_tx_socket_fd;
 
-struct sockaddr_in controller_sim_recv_addr, gz_sim_recv_addr, log_recv_addr, rover_tx_addr, rover_rx_addr;
+struct sockaddr_in controller_sim_recv_addr, gz_sim_recv_addr, log_recv_addr, rover_tx_addr;
 
-void controller_write_fn(uint8_t *data, uint16_t len)
-{
-    sendto(rover_rx_socket_fd, data, len, 0, (const struct sockaddr *)&rover_rx_addr, sizeof(rover_rx_addr));
+void handle_joystick_data(const char *axis, float value) {
+    if (strcmp(axis, "y") == 0) {
+        internal.input.y = -value;
+    } else if (strcmp(axis, "x") == 0) {
+        internal.input.x = value;
+    }
 }
 
-size_t controller_read_fn(uint8_t *buffer, size_t buffer_len)
+// FIXME shall not be done from the controller, rather the rover
+void send_log_data(controller_actuators_t *actuators, controller_sensors_t *sensors)
 {
-    struct sockaddr_in client_addr;
-    socklen_t addr_len = sizeof(client_addr);
+    struct json_object *json_obj = json_object_new_object();
 
-    size_t bytes_available = 0;
-    ioctl(rover_tx_socket_fd, FIONREAD, &bytes_available);
+    json_object_object_add(json_obj, "actuator_left", json_object_new_double(actuators->left));
+    json_object_object_add(json_obj, "actuator_right", json_object_new_double(actuators->right));
 
-    if (bytes_available > 0)
+    json_object_object_add(json_obj, "sensor_linear_acceleration_x", json_object_new_double(sensors->linear_acceleration_x));
+    json_object_object_add(json_obj, "sensor_linear_acceleration_y", json_object_new_double(sensors->linear_acceleration_y));
+    json_object_object_add(json_obj, "sensor_linear_acceleration_z", json_object_new_double(sensors->linear_acceleration_z));
+
+    json_object_object_add(json_obj, "sensor_angular_velocity_x", json_object_new_double(sensors->angular_velocity_x));
+    json_object_object_add(json_obj, "sensor_angular_velocity_y", json_object_new_double(sensors->angular_velocity_y));
+    json_object_object_add(json_obj, "sensor_angular_velocity_z", json_object_new_double(sensors->angular_velocity_z));
+
+    struct json_object *root = json_object_new_object();
+    json_object_object_add(root, "type", json_object_new_string("log"));
+    json_object_object_add(root, "data", json_obj);
+
+    const char *json_string = json_object_to_json_string(root);
+
+    if (sendto(rover_rx_socket_fd, json_string, strlen(json_string), 0, (const struct sockaddr *)&log_recv_addr, sizeof(log_recv_addr)) < 0)
     {
-        return recvfrom(rover_tx_socket_fd, buffer, buffer_len, 0, (struct sockaddr *)&client_addr, &addr_len);
+        perror("sendto failed");
+        exit(EXIT_FAILURE);
     }
-    else {
-        return 0;
+    json_object_put(json_obj);
+}
+
+void send_parameters() {
+    struct json_object *json_obj = json_object_new_object();
+    for (int i = 0; i < CONTROLLER_PARAMS_NUM_PARAMS; i++) {
+        char name[64];
+        controller_get_name_from_param(i, name, sizeof(name));
+        float value;
+        controller_get_param(i, &value);
+        json_object_object_add(json_obj, name, json_object_new_double(value));
     }
+
+    struct json_object *root = json_object_new_object();
+    json_object_object_add(root, "type", json_object_new_string("parameters"));
+    json_object_object_add(root, "data", json_obj);
+
+    const char *json_string = json_object_to_json_string(root);
+    if (sendto(rover_rx_socket_fd, json_string, strlen(json_string), 0, (const struct sockaddr *)&log_recv_addr, sizeof(log_recv_addr)) < 0)
+    {
+        perror("sendto failed");
+        exit(EXIT_FAILURE);
+    }
+    json_object_put(json_obj);
 }
 
 void read_udp_data()
@@ -89,9 +127,56 @@ void read_udp_data()
             sim_actuators.right = actuators.right * 20;
 
             sendto(gz_sim_recv_socket_fd, (const char *)&sim_actuators, sizeof(sim_api_actuator_data_t), 0, (const struct sockaddr *)&gz_sim_recv_addr, sizeof(gz_sim_recv_addr));
+
+            send_log_data(&actuators, &sensors);
         }
     }
 
+    // Check if data is available, FIXME this belongs to the python code
+    bytes_available;
+    ioctl(rover_tx_socket_fd, FIONREAD, &bytes_available);
+
+    if (bytes_available > 0)
+    {
+        ssize_t recv_len = recvfrom(rover_tx_socket_fd, &buffer, BUFFER_SIZE, 0, (struct sockaddr *)&client_addr, &addr_len);
+        buffer[recv_len] = '\0';
+        struct json_object *root = json_tokener_parse((char *)buffer);
+        struct json_object *type;
+        json_object_object_get_ex(root, "type", &type);
+        const char *type_string = json_object_get_string(type);
+        if (strcmp(type_string, "request_settings") == 0) {
+            send_parameters();
+        }
+        else if (strcmp(type_string, "setting") == 0) {
+            struct json_object *data;
+            json_object_object_get_ex(root, "data", &data);
+            const char* name = json_object_get_string(json_object_object_get(data, "setting"));
+            float value = json_object_get_double(json_object_object_get(data, "value"));
+            uint8_t found = 0;
+            for (int i = 0; i < CONTROLLER_PARAMS_NUM_PARAMS; i++) {
+                char param_name[64];
+                controller_get_name_from_param(i, param_name, sizeof(param_name));
+                if (strcmp(param_name, name) == 0) {
+                    controller_set_param(i, value);
+                    found = 1;
+                    break;
+                }
+            }
+            if (!found) {
+                printf("ERROR: Unknown parameter: %s\n", name);
+            }
+        }
+        else if (strcmp(type_string, "joystick") == 0) {
+            struct json_object *data;
+            json_object_object_get_ex(root, "data", &data);
+            const char* axis = json_object_get_string(json_object_object_get(data, "axis"));
+            float value = json_object_get_double(json_object_object_get(data, "value"));
+            handle_joystick_data(axis, value);
+        }
+        else {
+            printf("Unknown command: %s\n", type_string);
+        }
+    }
 }
 
 int main(int argc, char *argv[])
@@ -117,20 +202,11 @@ int main(int argc, char *argv[])
     char *controller_sim_commands_ip = getenv("CONTROLLER_SIM_COMMANDS_IP");
     printf("CONTROLLER_SIM_COMMANDS_IP: %s\n", controller_sim_commands_ip);
 
-    int rover_tx_port_int = atoi(getenv("CONTROLLER_RX_PORT"));
-    printf("CONTROLLER_RX_PORT: %d\n", rover_tx_port_int);
-
-    int rover_rx_port_int = atoi(getenv("CONTROLLER_TX_PORT"));
-    printf("CONTROLLER_TX_PORT: %d\n", rover_rx_port_int);
-
-    char *rover_rx_ip = getenv("CONTROLLER_TX_IP");
-    printf("ROVER_RX_IP: %s\n", rover_rx_ip);
-
-    char *rover_tx_ip = getenv("CONTROLLER_RX_IP");
-    printf("ROVER_TX_IP: %s\n", rover_tx_ip);
+    int controller_sim_commands_port_int = atoi(getenv("CONTROLLER_SIM_COMMANDS_PORT"));
+    printf("CONTROLLER_SIM_COMMANDS_PORT: %d\n", controller_sim_commands_port_int);
 
     /* Initialize the controller */
-    controller_init(&controller_read_fn, &controller_write_fn);
+    controller_init();
     if ((gz_sim_send_socket_fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
     {
         perror("socket creation failed");
@@ -163,11 +239,7 @@ int main(int argc, char *argv[])
     memset(&rover_tx_addr, 0, sizeof(rover_tx_addr));
     rover_tx_addr.sin_family = AF_INET;
     rover_tx_addr.sin_addr.s_addr = INADDR_ANY;
-    rover_tx_addr.sin_port = htons(rover_tx_port_int);
-
-    memset(&rover_rx_addr, 0, sizeof(rover_rx_addr));
-    rover_rx_addr.sin_family = AF_INET;
-    rover_rx_addr.sin_port = htons(rover_rx_port_int);
+    rover_tx_addr.sin_port = htons(controller_sim_commands_port_int);
 
     memset(&gz_sim_recv_addr, 0, sizeof(gz_sim_recv_addr));
     gz_sim_recv_addr.sin_family = AF_INET;
@@ -179,12 +251,6 @@ int main(int argc, char *argv[])
     log_recv_addr.sin_port = htons(log_recv_port_int);
 
     if (inet_pton(AF_INET, gz_recv_ip, &(gz_sim_recv_addr.sin_addr)) <= 0)
-    {
-        perror("invalid address");
-        exit(EXIT_FAILURE);
-    }
-
-    if (inet_pton(AF_INET, rover_rx_ip, &(rover_rx_addr.sin_addr)) <= 0)
     {
         perror("invalid address");
         exit(EXIT_FAILURE);

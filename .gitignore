@@ -5,3 +5,4 @@ sim/compile_commands.json
 .venv/
 OliRover/support/swdl/_input/
 support/swdl/_input/
+*.pyc

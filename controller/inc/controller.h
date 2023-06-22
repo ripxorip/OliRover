@@ -2,6 +2,10 @@
 #define CONTROLLER
 
 #include <stdint.h>
+#include <stddef.h>
+
+typedef void (*comm_write_t)(uint8_t *data, uint16_t len);
+typedef size_t (*comm_read_t)(uint8_t *buffer, size_t buffer_len);
 
 typedef enum
 {
@@ -34,7 +38,7 @@ typedef struct
     float angular_velocity_z;
 } controller_sensors_t;
 
-void controller_init();
+void controller_init(comm_read_t read_fn, comm_write_t write_fn);
 void controller_process(controller_actuators_t *actuators, controller_sensors_t *sensors, controller_input_t *input);
 void controller_get_num_params(uint8_t *num_params);
 

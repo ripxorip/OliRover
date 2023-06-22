@@ -15,6 +15,9 @@ from PyQt5.QtWidgets import QApplication, QWidget, QGridLayout, QLabel, QGroupBo
 from PyQt5.QtCore import QObject, pyqtSlot, QThread, pyqtSignal, Qt
 import queue
 
+#FIXME The toolbox shall not be able to communicate with the controller directly, so the
+# CONTROLLER_SIM etc shall be ROVER_SIM etc...
+
 class Settings:
     settings = {
         'kp' : {
@@ -92,17 +95,17 @@ class CommThread(QThread):
         super().__init__()
         self.comm_queu = comm_queue
 
-        UDP_IP = os.environ['LOG_RECV_IP']
-        UDP_PORT = int(os.environ['LOG_RECV_PORT'])
+        rover_tx_ip = os.environ['ROVER_API_TX_IP']
+        rover_tx_port = int(os.environ['ROVER_API_TX_PORT'])
         self.buffer_size = 4096
 
         # Create a UDP socket
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.sock.bind((UDP_IP, UDP_PORT))
+        self.sock.bind((rover_tx_ip, rover_tx_port))
 
-        self.CONTROLLER_SIM_COMMANDS_IP = os.environ['CONTROLLER_SIM_COMMANDS_IP']
-        self.CONTROLLER_SIM_COMMANDS_PORT = int(os.environ['CONTROLLER_SIM_COMMANDS_PORT'])
-        self.controller_sim_command_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.rover_rx_ip = os.environ['ROVER_API_RX_IP']
+        self.rover_rx_port = int(os.environ['ROVER_API_RX_PORT'])
+        self.rover_rx_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
         self.has_received_settings = False
 
@@ -123,12 +126,12 @@ class CommThread(QThread):
             if not self.has_received_settings:
                 req = {'type': 'request_settings'}
                 json_str = json.dumps(req)
-                self.controller_sim_command_sock.sendto(json_str.encode('utf-8'), (self.CONTROLLER_SIM_COMMANDS_IP, self.CONTROLLER_SIM_COMMANDS_PORT))
+                self.rover_rx_sock.sendto(json_str.encode('utf-8'), (self.rover_rx_ip, self.rover_rx_port))
 
             while not self.comm_queu.empty():
                 json_data = self.comm_queu.get()
                 json_str = json.dumps(json_data)
-                self.controller_sim_command_sock.sendto(json_str.encode('utf-8'), (self.CONTROLLER_SIM_COMMANDS_IP, self.CONTROLLER_SIM_COMMANDS_PORT))
+                self.rover_rx_sock.sendto(json_str.encode('utf-8'), (self.rover_rx_ip, self.rover_rx_port))
 
 class ControlInterface(QWidget):
     def __init__(self, settings, comm_queue):
@@ -287,9 +290,9 @@ def main():
     ct = CommThread(q)
     if input_dev is not None:
         jt = JoystickThread(input_dev, int(os.environ.get("CONTROLLER_SIM_JOYSTICK_DEADBAND")) ,q)
+        jt.start()
     ci.connect_plot_data(ct)
     ct.start()
-    jt.start()
     app.exec_()
 
 if __name__ == '__main__':

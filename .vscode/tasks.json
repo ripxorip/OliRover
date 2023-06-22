@@ -16,11 +16,54 @@
         {
             "label": "Build controller sim",
             "type": "shell",
-            "command": "cd controller/build && make -j16 && source ../../sim_environment.sh && ./OliRoverControllerSimulator",
+            "command": "cd controller/build && make -j16",
             "problemMatcher": [],
             "group": {
                 "kind": "build",
                 "isDefault": true
+            }
+        },
+        {
+            "label": "Generate interface",
+            "type": "shell",
+            "command": "./.venv/bin/clang2py interface/interface.h > interface/interface.py",
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            }
+        },
+        {
+            "label": "Run Rover",
+            "type": "shell",
+            "command": "./.venv/bin/python rover/rover.py",
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            }
+        },
+        {
+            "label": "Run Rover Sim",
+            "type": "shell",
+            "command": "source sim_environment.sh && ./.venv/bin/python rover/rover.py --simulation",
+            "dependsOn": [
+                "Build controller sim"
+            ],
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            }
+        },
+        {
+            "label": "Run toolbox sim",
+            "type": "shell",
+            "command": "source sim_environment.sh && ./.venv/bin/python support/toolbox.py",
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": false
             }
         }
     ]
