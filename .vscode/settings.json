@@ -68,6 +68,7 @@
         "typeinfo": "cpp",
         "variant": "cpp",
         "complex": "cpp",
-        "json.h": "c"
+        "json.h": "c",
+        "sim_api.h": "c"
     }
 }
