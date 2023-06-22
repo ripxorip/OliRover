@@ -97,7 +97,7 @@ void read_from_rover()
         if (verify_message(INTERFACE_SENSORS, sizeof(interface_sensors_t), message_buffer, len))
         {
             interface_sensors_t *sensors = (interface_sensors_t *)(message_buffer);
-            printf("Sensors: %f %f %f %f %f %f\n", sensors->linear_acceleration_x, sensors->linear_acceleration_y, sensors->linear_acceleration_z, sensors->angular_velocity_x, sensors->angular_velocity_y, sensors->angular_velocity_z);
+            //printf("Sensors: %f %f %f %f %f %f\n", sensors->linear_acceleration_x, sensors->linear_acceleration_y, sensors->linear_acceleration_z, sensors->angular_velocity_x, sensors->angular_velocity_y, sensors->angular_velocity_z);
         }
     }
 }

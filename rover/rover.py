@@ -51,7 +51,7 @@ class Rover:
 
     # Get API data from e.g. the toolbox
     def handle_api_call(self, data):
-        pass
+        print(data)
 
     def api_thread(self):
         while True:
