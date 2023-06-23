@@ -14,6 +14,8 @@ import socket
 import threading
 import queue
 
+import json
+
 from ctypes import *
 
 # Main module thats intended to be run on the rover (Rpi)
@@ -51,6 +53,8 @@ class Rover:
 
     # Get API data from e.g. the toolbox
     def handle_api_call(self, data):
+        # FIXME Cont. here...
+        # handle parameters etc
         print(data)
 
     def api_thread(self):
@@ -101,6 +105,11 @@ class Rover:
                res_struct = interface_sensors_t()
                memmove(pointer(res_struct), message_bytes, sizeof(res_struct))
                sensor_data = getdict(res_struct)
+
+               api_sensor_data = {'type': 'log', 'data': sensor_data}
+               # Send the sensor data to the Toolbox for logging
+               api_sensor_data_json = json.dumps(api_sensor_data)
+               self.api_tx_socket.sendto(api_sensor_data_json.encode('utf-8'), (self.api_tx_ip, self.api_tx_port))
 
                echo_data = interface_sensors_t()
                echo_data.angular_velocity_x = sensor_data['angular_velocity_x']
