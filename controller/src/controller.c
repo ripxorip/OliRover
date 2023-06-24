@@ -45,7 +45,7 @@ void write_to_rover(uint32_t id, uint8_t *data, uint16_t len)
     internal.comm_write_fn(buffer, offset);
 }
 
-uint32_t verify_message(uint32_t id, size_t message_len, uint8_t *buffer, size_t buf_len)
+int32_t verify_message(uint32_t id, size_t message_len, uint8_t *buffer, size_t buf_len)
 {
     static uint8_t tmp_buffer[1024] = {0};
     static uint8_t tmp_buffer_reverse[1024] = {0};
@@ -83,7 +83,7 @@ uint32_t verify_message(uint32_t id, size_t message_len, uint8_t *buffer, size_t
         return message_len;
     }
 
-    return 0;
+    return -1;
 }
 
 void read_from_rover()
@@ -94,10 +94,24 @@ void read_from_rover()
     for (size_t i = 0; i < len; i++)
     {
         cbwo_write(&internal.cb, comm_read_buffer[i]);
-        if (verify_message(INTERFACE_SENSORS, sizeof(interface_sensors_t), message_buffer, len))
+        if (verify_message(INTERFACE_SENSORS, sizeof(interface_sensors_t), message_buffer, len) >= 0)
         {
             interface_sensors_t *sensors = (interface_sensors_t *)(message_buffer);
-            //printf("Sensors: %f %f %f %f %f %f\n", sensors->linear_acceleration_x, sensors->linear_acceleration_y, sensors->linear_acceleration_z, sensors->angular_velocity_x, sensors->angular_velocity_y, sensors->angular_velocity_z);
+        }
+        if (verify_message(INTERFACE_GET_NUM_PARAMS, 0, message_buffer, sizeof(message_buffer)) >= 0)
+        {
+            interface_get_num_params num_params = {0};
+            num_params.num_parameters = CONTROLLER_PARAMS_NUM_PARAMS;
+            write_to_rover(INTERFACE_GET_NUM_PARAMS, (uint8_t *)&num_params, sizeof(interface_get_num_params));
+        }
+        if (verify_message(INTERFACE_REQ_PARAM_WITH_NAME, sizeof(interface_req_param_with_name), message_buffer, len) >= 0)
+        {
+            interface_req_param_with_name *req = (interface_req_param_with_name *)(message_buffer);
+            interface_get_param_with_name resp = {0};
+            controller_get_name_from_param(req->param_id, resp.parameter_name, sizeof(resp.parameter_name));
+            resp.parameter_value = internal.params[req->param_id];
+            resp.param_id = req->param_id;
+            write_to_rover(INTERFACE_GET_PARAM_WITH_NAME, (uint8_t *)&resp, sizeof(interface_get_param_with_name));
         }
     }
 }

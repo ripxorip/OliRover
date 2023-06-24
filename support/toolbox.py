@@ -261,11 +261,12 @@ class ControlInterface(QWidget):
         if data['type'] == 'log':
             self.update_plots(data['data'])
         elif data['type'] == 'parameters':
-            for key in data['data']:
+            for param in data['data']:
+                key = param['parameter_name']
+                val = param['parameter_value']
                 self.sliders[key].setEnabled(True)
-                self.settings[key]['current_value'] = data['data'][key]
-                num = data['data'][key]
-                num = round(num, 4)
+                self.settings[key]['current_value'] = val
+                num = round(val, 4)
                 self.text_inputs[key].setText(str(num))
                 self.sliders[key].setValue(int(num / self.sliders[key].step))
         return

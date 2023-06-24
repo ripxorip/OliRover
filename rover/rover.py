@@ -51,21 +51,32 @@ class Rover:
 
         self.cbwo = CircularBufferWithOffset(1024)
 
+        self.api_state = 'idle'
+        self.num_params = 0
+        self.params = []
+        self.num_params_received = 0
+
     # Get API data from e.g. the toolbox
     def handle_api_call(self, data):
-        # FIXME Cont. here...
-        # handle parameters etc
-        print(data)
+        if data['type'] == 'request_settings' and self.api_state == 'idle':
+            self.api_state = 'request_settings'
+            self.num_params_received = 0
+            self.num_params = 0
+            self.controller_data_send(INTERFACE_GET_NUM_PARAMS, None)
 
     def api_thread(self):
         while True:
             data, addr = self.api_rx_socket.recvfrom(4096)
-            res = self.handle_api_call(data)
+            json_data = json.loads(data.decode('utf-8'))
+            res = self.handle_api_call(json_data)
             # self.api_tx_socket.sendto(data, (self.api_tx_ip, self.api_tx_port))
 
     def controller_data_send(self, id, data):
         # Get the data as a bytes object from the ctypes struct
-        data_bytes = bytes(data)
+        if data is not None:
+            data_bytes = bytes(data)
+        else:
+            data_bytes = b''
         bytes_to_send = id.to_bytes(4, byteorder='little') + data_bytes + (id ^ 0xffffffff).to_bytes(4, byteorder='little')
         self.cc.write(bytes_to_send)
 
@@ -97,36 +108,50 @@ class Rover:
 
         return None
 
-    def controller_data_received(self, data):
-        for d in data:
-            self.cbwo.write(d)
-            message_bytes = self.verify_controller_message(INTERFACE_SENSORS, sizeof(interface_sensors_t()))
-            if message_bytes is not None:
-               res_struct = interface_sensors_t()
-               memmove(pointer(res_struct), message_bytes, sizeof(res_struct))
-               sensor_data = getdict(res_struct)
+    def controller_data_received(self, d):
+        self.cbwo.write(d)
 
-               api_sensor_data = {'type': 'log', 'data': sensor_data}
-               # Send the sensor data to the Toolbox for logging
-               api_sensor_data_json = json.dumps(api_sensor_data)
-               self.api_tx_socket.sendto(api_sensor_data_json.encode('utf-8'), (self.api_tx_ip, self.api_tx_port))
+        if (message_bytes := self.verify_controller_message(INTERFACE_SENSORS, sizeof(interface_sensors_t()))) is not None:
+            res_struct = interface_sensors_t()
+            memmove(pointer(res_struct), message_bytes, sizeof(res_struct))
+            sensor_data = getdict(res_struct)
 
-               echo_data = interface_sensors_t()
-               echo_data.angular_velocity_x = sensor_data['angular_velocity_x']
-               echo_data.angular_velocity_y = sensor_data['angular_velocity_y']
-               echo_data.angular_velocity_z = sensor_data['angular_velocity_z']
+            api_sensor_data = {'type': 'log', 'data': sensor_data}
+            # Send the sensor data to the Toolbox for logging
+            api_sensor_data_json = json.dumps(api_sensor_data)
+            self.api_tx_socket.sendto(api_sensor_data_json.encode('utf-8'), (self.api_tx_ip, self.api_tx_port))
 
-               echo_data.linear_acceleration_x = sensor_data['linear_acceleration_x']
-               echo_data.linear_acceleration_y = sensor_data['linear_acceleration_y']
-               echo_data.linear_acceleration_z = sensor_data['linear_acceleration_z']
+        if (message_bytes := self.verify_controller_message(INTERFACE_GET_NUM_PARAMS, sizeof(interface_get_num_params()))) is not None:
+            res_struct = interface_get_num_params()
+            memmove(pointer(res_struct), message_bytes, sizeof(res_struct))
+            num_param = getdict(res_struct)
+            self.num_params = num_param['num_parameters']
+            for i in range(0, self.num_params):
+                ip = interface_req_param_with_name()
+                ip.param_id = i
+                self.controller_data_send(INTERFACE_REQ_PARAM_WITH_NAME, ip)
 
-               self.controller_data_send(INTERFACE_SENSORS, echo_data)
+        if (message_bytes := self.verify_controller_message(INTERFACE_GET_PARAM_WITH_NAME, sizeof(interface_get_param_with_name()))) is not None:
+            res_struct = interface_get_param_with_name()
+            memmove(pointer(res_struct), message_bytes, sizeof(res_struct))
+            param = getdict(res_struct)
+            param['parameter_name'] = param['parameter_name'].decode('utf-8')
+            self.params.append(param)
+            self.num_params_received += 1
+            if self.num_params_received == self.num_params:
+                self.api_state = 'idle'
+                api_params = {'type': 'parameters', 'data': self.params}
+                api_params_json = json.dumps(api_params)
+                print(api_params_json)
+                self.api_tx_socket.sendto(api_params_json.encode('utf-8'), (self.api_tx_ip, self.api_tx_port))
+
 
     def controller_thread(self):
         while True:
             while not self.cc.data_queue.empty():
                 data = self.cc.data_queue.get()
-                self.controller_data_received(data)
+                for d in data:
+                    self.controller_data_received(d)
             time.sleep(0.01)
 
 class CircularBufferWithOffset:

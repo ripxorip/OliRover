@@ -123,9 +123,17 @@ class Union(ctypes.Union, AsDictMixin):
 c__EA_interface_t__enumvalues = {
     1431326281: 'INTERFACE_INPUT',
     1397638483: 'INTERFACE_SENSORS',
+    1095781959: 'INTERFACE_GET_NUM_PARAMS',
+    1314345042: 'INTERFACE_REQ_PARAM_WITH_NAME',
+    1314345031: 'INTERFACE_GET_PARAM_WITH_NAME',
+    1380012115: 'INTERFACE_SET_PARAM',
 }
 INTERFACE_INPUT = 1431326281
 INTERFACE_SENSORS = 1397638483
+INTERFACE_GET_NUM_PARAMS = 1095781959
+INTERFACE_REQ_PARAM_WITH_NAME = 1314345042
+INTERFACE_GET_PARAM_WITH_NAME = 1314345031
+INTERFACE_SET_PARAM = 1380012115
 c__EA_interface_t = ctypes.c_uint32 # enum
 interface_t = c__EA_interface_t
 interface_t__enumvalues = c__EA_interface_t__enumvalues
@@ -153,8 +161,56 @@ struct_c__SA_interface_sensors_t._fields_ = [
 ]
 
 interface_sensors_t = struct_c__SA_interface_sensors_t
+class struct_c__SA_interface_get_num_params(Structure):
+    pass
+
+struct_c__SA_interface_get_num_params._pack_ = 1 # source:False
+struct_c__SA_interface_get_num_params._fields_ = [
+    ('num_parameters', ctypes.c_uint32),
+]
+
+interface_get_num_params = struct_c__SA_interface_get_num_params
+class struct_c__SA_interface_req_param_with_name(Structure):
+    pass
+
+struct_c__SA_interface_req_param_with_name._pack_ = 1 # source:False
+struct_c__SA_interface_req_param_with_name._fields_ = [
+    ('param_id', ctypes.c_uint32),
+]
+
+interface_req_param_with_name = struct_c__SA_interface_req_param_with_name
+class struct_c__SA_interface_get_param_with_name(Structure):
+    pass
+
+struct_c__SA_interface_get_param_with_name._pack_ = 1 # source:False
+struct_c__SA_interface_get_param_with_name._fields_ = [
+    ('param_id', ctypes.c_uint32),
+    ('parameter_value', ctypes.c_float),
+    ('parameter_name', ctypes.c_char * 32),
+]
+
+interface_get_param_with_name = struct_c__SA_interface_get_param_with_name
+class struct_c__SA_interface_set_param(Structure):
+    pass
+
+struct_c__SA_interface_set_param._pack_ = 1 # source:False
+struct_c__SA_interface_set_param._fields_ = [
+    ('param_id', ctypes.c_uint32),
+    ('parameter_value', ctypes.c_float),
+]
+
+interface_set_param = struct_c__SA_interface_set_param
 __all__ = \
-    ['INTERFACE_INPUT', 'INTERFACE_SENSORS', 'c__EA_interface_t',
-    'interface_input_t', 'interface_sensors_t', 'interface_t',
-    'interface_t__enumvalues', 'struct_c__SA_interface_input_t',
-    'struct_c__SA_interface_sensors_t']
+    ['INTERFACE_GET_NUM_PARAMS', 'INTERFACE_GET_PARAM_WITH_NAME',
+    'INTERFACE_INPUT', 'INTERFACE_REQ_PARAM_WITH_NAME',
+    'INTERFACE_SENSORS', 'INTERFACE_SET_PARAM', 'c__EA_interface_t',
+    'interface_get_num_params', 'interface_get_param_with_name',
+    'interface_input_t', 'interface_req_param_with_name',
+    'interface_sensors_t', 'interface_set_param', 'interface_t',
+    'interface_t__enumvalues',
+    'struct_c__SA_interface_get_num_params',
+    'struct_c__SA_interface_get_param_with_name',
+    'struct_c__SA_interface_input_t',
+    'struct_c__SA_interface_req_param_with_name',
+    'struct_c__SA_interface_sensors_t',
+    'struct_c__SA_interface_set_param']
