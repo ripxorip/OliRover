@@ -56,6 +56,14 @@ class Rover:
         self.params = []
         self.num_params_received = 0
 
+        self.handle_api_call({'type': 'request_settings'})
+
+    def get_id_from_param_name(self, param_name):
+        for param in self.params:
+            if param['parameter_name'] == param_name:
+                return param['param_id']
+        return None
+
     # Get API data from e.g. the toolbox
     def handle_api_call(self, data):
         if data['type'] == 'request_settings' and self.api_state == 'idle':
@@ -64,12 +72,20 @@ class Rover:
             self.num_params = 0
             self.controller_data_send(INTERFACE_GET_NUM_PARAMS, None)
 
+        elif data['type'] == 'setting' and self.api_state == 'idle':
+            isp = interface_set_param()
+            id = self.get_id_from_param_name(data['data']['setting'])
+            isp.param_id = id
+            isp.parameter_value = data['data']['value']
+            self.controller_data_send(INTERFACE_SET_PARAM, isp)
+        else:
+            print('Unhandled API call: ' + str(data))
+
     def api_thread(self):
         while True:
             data, addr = self.api_rx_socket.recvfrom(4096)
             json_data = json.loads(data.decode('utf-8'))
-            res = self.handle_api_call(json_data)
-            # self.api_tx_socket.sendto(data, (self.api_tx_ip, self.api_tx_port))
+            self.handle_api_call(json_data)
 
     def controller_data_send(self, id, data):
         # Get the data as a bytes object from the ctypes struct
@@ -142,7 +158,6 @@ class Rover:
                 self.api_state = 'idle'
                 api_params = {'type': 'parameters', 'data': self.params}
                 api_params_json = json.dumps(api_params)
-                print(api_params_json)
                 self.api_tx_socket.sendto(api_params_json.encode('utf-8'), (self.api_tx_ip, self.api_tx_port))
 
 

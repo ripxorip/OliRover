@@ -113,6 +113,11 @@ void read_from_rover()
             resp.param_id = req->param_id;
             write_to_rover(INTERFACE_GET_PARAM_WITH_NAME, (uint8_t *)&resp, sizeof(interface_get_param_with_name));
         }
+        if (verify_message(INTERFACE_SET_PARAM, sizeof(interface_set_param), message_buffer, len) >= 0)
+        {
+            interface_set_param *isp = (interface_set_param *)(message_buffer);
+            controller_set_param(isp->param_id, isp->parameter_value);
+        }
     }
 }
 
