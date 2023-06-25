@@ -65,6 +65,16 @@
                 "kind": "build",
                 "isDefault": false
             }
+        },
+        {
+            "label": "Run Remote Controller",
+            "type": "shell",
+            "command": "source sim_environment.sh && ./.venv/bin/python support/remote.py",
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            }
         }
     ]
 }
