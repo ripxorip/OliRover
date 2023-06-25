@@ -12,13 +12,6 @@
 #include "sim_api.h"
 #include "interface.h"
 
-static struct {
-    struct {
-        float y;
-        float x;
-    } input;
-} internal = {0};
-
 int gz_sim_send_socket_fd;
 int gz_sim_recv_socket_fd;
 int rover_rx_socket_fd;
@@ -80,10 +73,7 @@ void read_udp_data()
             sensors.angular_velocity_y = sim_sensors.angular_velocity_y;
             sensors.angular_velocity_z = sim_sensors.angular_velocity_z;
 
-            controller_input_t input;
-            input.x = internal.input.x;
-            input.y = internal.input.y;
-            controller_process(&actuators, &sensors, &input);
+            controller_process(&actuators, &sensors);
 
             sim_actuators.left = actuators.left * 20;
             sim_actuators.right = actuators.right * 20;

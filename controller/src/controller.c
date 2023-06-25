@@ -11,6 +11,11 @@ static struct
     comm_read_t comm_read_fn;
     comm_write_t comm_write_fn;
     cbwo_t cb;
+    struct
+    {
+        float x;
+        float y;
+    } input;
 } internal = {0};
 
 void controller_init(comm_read_t read_fn, comm_write_t write_fn)
@@ -22,6 +27,8 @@ void controller_init(comm_read_t read_fn, comm_write_t write_fn)
     internal.params[CONTROLLER_PARAMS_KI] = 0.05;
     internal.params[CONTROLLER_PARAMS_KD] = 0.005;
     cbwo_init(&internal.cb);
+    internal.input.x = 0.0;
+    internal.input.y = 0.0;
 }
 
 void write_to_rover(uint32_t id, uint8_t *data, uint16_t len)
@@ -118,20 +125,25 @@ void read_from_rover()
             interface_set_param *isp = (interface_set_param *)(message_buffer);
             controller_set_param(isp->param_id, isp->parameter_value);
         }
+        if (verify_message(INTERFACE_INPUT, sizeof(interface_input_t), message_buffer, len) >= 0)
+        {
+            interface_input_t *input = (interface_input_t *)(message_buffer);
+            internal.input.x = input->x;
+            internal.input.y = input->y;
+        }
     }
 }
 
-void controller_process(controller_actuators_t *actuators, controller_sensors_t *sensors, controller_input_t *input)
+void controller_process(controller_actuators_t *actuators, controller_sensors_t *sensors)
 {
     read_from_rover();
     /* actuators->left = internal.params[CONTROLLER_PARAMS_KP];
     actuators->right = -0.8; */
-    actuators->left = input->y;
-    actuators->right = input->y;
-    actuators->left += input->x;
-    actuators->right -= input->x;
 
-    /* FIXME Check input */
+    actuators->left = internal.input.y;
+    actuators->right = internal.input.y;
+    actuators->left += internal.input.x;
+    actuators->right -= internal.input.x;
 
     interface_sensors_t interface_sensors;
     interface_sensors.linear_acceleration_x = sensors->linear_acceleration_x;

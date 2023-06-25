@@ -39,7 +39,7 @@ typedef struct
 } controller_sensors_t;
 
 void controller_init(comm_read_t read_fn, comm_write_t write_fn);
-void controller_process(controller_actuators_t *actuators, controller_sensors_t *sensors, controller_input_t *input);
+void controller_process(controller_actuators_t *actuators, controller_sensors_t *sensors);
 void controller_get_num_params(uint8_t *num_params);
 
 void controller_set_param(controller_params_t param, float value);

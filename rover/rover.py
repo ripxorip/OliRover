@@ -78,6 +78,14 @@ class Rover:
             isp.param_id = id
             isp.parameter_value = data['data']['value']
             self.controller_data_send(INTERFACE_SET_PARAM, isp)
+        elif data['type'] == 'joystick' and self.api_state == 'idle':
+            iip = interface_input_t()
+            jd = data['data']
+            if jd['axis'] == 'x':
+                iip.x = jd['value']
+            elif jd['axis'] == 'y':
+                iip.y = jd['value']
+            self.controller_data_send(INTERFACE_INPUT, iip)
         else:
             print('Unhandled API call: ' + str(data))
 
