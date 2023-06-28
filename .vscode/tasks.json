@@ -79,7 +79,7 @@
         {
             "label": "Build and flash controller (embedded)",
             "type": "shell",
-            "command": "cd controller/build_embedded && make -j16 && python ~/dev/OliRover/support/swdl/swdl_remote.py ~/dev/OliRover/controller/build_embedded/OliRoverController.elf",
+            "command": "ssh ripxorip@olirover.local 'sudo systemctl stop olirover' && cd controller/build_embedded && make -j16 && python ~/dev/OliRover/support/swdl/swdl_remote.py ~/dev/OliRover/controller/build_embedded/OliRoverController.elf && ssh ripxorip@olirover.local 'sudo systemctl start olirover'",
             "problemMatcher": [],
             "group": {
                 "kind": "build",
@@ -99,7 +99,7 @@
         {
             "label": "Full SWDL and start rover (embedded)",
             "type": "shell",
-            "command": "echo 'Full SWDL and start rover (embedded)",
+            "command": "echo 'Full SWDL and start rover (embedded)'",
             "problemMatcher": [],
             "dependsOn": [
                 "Build and flash controller (embedded)",

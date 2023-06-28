@@ -13,9 +13,25 @@ void controller_write_fn(uint8_t *data, uint16_t len)
 
 size_t controller_read_fn(uint8_t *buffer, size_t buffer_len)
 {
-    (void)buffer;
-    (void)buffer_len;
-    return 0;
+    uint32_t bytes_read = 0;
+    /* Check if there is any UART data availible */
+    if (uart_is_readable(uart0) == false)
+    {
+        goto exit;
+    }
+
+    while (uart_is_readable(uart0) && bytes_read < buffer_len)
+    {
+        /* Read one byte */
+        uint8_t byte;
+        uart_read_blocking(uart0, &byte, 1u);
+        /* Add the byte to the buffer */
+        buffer[bytes_read] = byte;
+        bytes_read++;
+    }
+
+exit:
+    return bytes_read;
 }
 
 int main() {
