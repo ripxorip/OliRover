@@ -154,9 +154,11 @@ class Rover:
             num_param = getdict(res_struct)
             self.num_params = num_param['num_parameters']
             for i in range(0, self.num_params):
+                # FIXME Wait until the previous parameter has been received before requesting the next one
                 ip = interface_req_param_with_name()
                 ip.param_id = i
                 self.controller_data_send(INTERFACE_REQ_PARAM_WITH_NAME, ip)
+                time.sleep(0.5)
 
         if (message_bytes := self.verify_controller_message(INTERFACE_GET_PARAM_WITH_NAME, sizeof(interface_get_param_with_name()))) is not None:
             res_struct = interface_get_param_with_name()

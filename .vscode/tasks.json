@@ -67,6 +67,16 @@
             }
         },
         {
+            "label": "Run toolbox (embedded)",
+            "type": "shell",
+            "command": "source prod_environment.sh && ./.venv/bin/python support/toolbox.py",
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            }
+        },
+        {
             "label": "Run Remote Controller",
             "type": "shell",
             "command": "source sim_environment.sh && ./.venv/bin/python support/remote.py",
