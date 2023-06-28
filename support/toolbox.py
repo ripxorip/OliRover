@@ -188,12 +188,8 @@ class ControlInterface(QWidget):
                 self.plots[key].plot(self.plot_data[key][i], clear=False)
 
     def update_plots(self, data):
-        if self.counter % 2 == 0:
-            self.plot_data['PID Tuning'][0].append(data['angular_velocity_z'])
-        if self.counter % 50 == 0:
-            self.apply_plot_data()
-            self.counter = 0
-        self.counter += 1
+        self.plot_data['PID Tuning'][0].append(data['angular_velocity_z'])
+        self.apply_plot_data()
 
     def createSlider(self, text, setting):
         groupBox = QGroupBox(text)

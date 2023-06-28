@@ -61,6 +61,7 @@ int main() {
 
     while (true) {
         controller_process(&actuators, &sensors);
-        sleep_ms(250);
+        /* Rover/controller communication 50ms or slower */
+        sleep_ms(50);
     }
 }

@@ -136,6 +136,7 @@ void read_from_rover()
 
 void controller_process(controller_actuators_t *actuators, controller_sensors_t *sensors)
 {
+    static float counter = 0.0f;
     read_from_rover();
     /* actuators->left = internal.params[CONTROLLER_PARAMS_KP];
     actuators->right = -0.8; */
@@ -146,13 +147,18 @@ void controller_process(controller_actuators_t *actuators, controller_sensors_t 
     actuators->right -= internal.input.x;
 
     interface_sensors_t interface_sensors;
-    interface_sensors.linear_acceleration_x = sensors->linear_acceleration_x;
-    interface_sensors.linear_acceleration_y = sensors->linear_acceleration_y;
+    interface_sensors.linear_acceleration_x = internal.params[CONTROLLER_PARAMS_KP];
+    interface_sensors.linear_acceleration_y = counter;
     interface_sensors.linear_acceleration_z = sensors->linear_acceleration_z;
     interface_sensors.angular_velocity_x = sensors->angular_velocity_x;
     interface_sensors.angular_velocity_y = sensors->angular_velocity_y;
-    interface_sensors.angular_velocity_z = sensors->angular_velocity_z;
+    interface_sensors.angular_velocity_z = internal.params[CONTROLLER_PARAMS_KP];
     write_to_rover(INTERFACE_SENSORS, (uint8_t *)&interface_sensors, sizeof(interface_sensors_t));
+    counter += 1.0f;
+    if (counter > 1000.00f)
+    {
+        counter = 0.0f;
+    }
 }
 
 void controller_get_num_params(uint8_t *num_params)

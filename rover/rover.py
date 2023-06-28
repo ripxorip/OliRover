@@ -32,6 +32,7 @@ from interface import *
 
 class Rover:
     def __init__(self, communication_interface):
+        self.cbwo = CircularBufferWithOffset(1024)
         self.cc = communication_interface
 
         api_rx_ip = os.environ['ROVER_API_RX_IP']
@@ -50,8 +51,6 @@ class Rover:
 
         self.controller_thread = threading.Thread(target=self.controller_thread)
         self.controller_thread.start()
-
-        self.cbwo = CircularBufferWithOffset(1024)
 
         self.api_state = 'idle'
         self.num_params = 0
@@ -146,19 +145,15 @@ class Rover:
             # Send the sensor data to the Toolbox for logging
             api_sensor_data_json = json.dumps(api_sensor_data)
             self.api_tx_socket.sendto(api_sensor_data_json.encode('utf-8'), (self.api_tx_ip, self.api_tx_port))
-            print(api_sensor_data_json)
 
         if (message_bytes := self.verify_controller_message(INTERFACE_GET_NUM_PARAMS, sizeof(interface_get_num_params()))) is not None:
             res_struct = interface_get_num_params()
             memmove(pointer(res_struct), message_bytes, sizeof(res_struct))
             num_param = getdict(res_struct)
             self.num_params = num_param['num_parameters']
-            for i in range(0, self.num_params):
-                # FIXME Wait until the previous parameter has been received before requesting the next one
-                ip = interface_req_param_with_name()
-                ip.param_id = i
-                self.controller_data_send(INTERFACE_REQ_PARAM_WITH_NAME, ip)
-                time.sleep(0.5)
+            ip = interface_req_param_with_name()
+            ip.param_id = 0
+            self.controller_data_send(INTERFACE_REQ_PARAM_WITH_NAME, ip)
 
         if (message_bytes := self.verify_controller_message(INTERFACE_GET_PARAM_WITH_NAME, sizeof(interface_get_param_with_name()))) is not None:
             res_struct = interface_get_param_with_name()
@@ -172,6 +167,10 @@ class Rover:
                 api_params = {'type': 'parameters', 'data': self.params}
                 api_params_json = json.dumps(api_params)
                 self.api_tx_socket.sendto(api_params_json.encode('utf-8'), (self.api_tx_ip, self.api_tx_port))
+            elif self.num_params_received < self.num_params:
+                ip = interface_req_param_with_name()
+                ip.param_id = self.num_params_received
+                self.controller_data_send(INTERFACE_REQ_PARAM_WITH_NAME, ip)
 
 
     def controller_thread(self):
@@ -249,6 +248,7 @@ class ControllerInterfaceSerial:
 
     def write(self, data):
         self.ser.write(data)
+        self.ser.flush()
 
 def getdict(struct):
     return dict((field, getattr(struct, field)) for field, _ in struct._fields_)
