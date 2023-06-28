@@ -18,6 +18,8 @@ import json
 
 from ctypes import *
 
+import serial
+
 # Main module thats intended to be run on the rover (Rpi)
 
 # Import the C interface (For communication with the controller)
@@ -144,6 +146,7 @@ class Rover:
             # Send the sensor data to the Toolbox for logging
             api_sensor_data_json = json.dumps(api_sensor_data)
             self.api_tx_socket.sendto(api_sensor_data_json.encode('utf-8'), (self.api_tx_ip, self.api_tx_port))
+            print(api_sensor_data_json)
 
         if (message_bytes := self.verify_controller_message(INTERFACE_GET_NUM_PARAMS, sizeof(interface_get_num_params()))) is not None:
             res_struct = interface_get_num_params()
@@ -231,8 +234,19 @@ class ControllerInterfaceUDP:
         self.controller_rx_sock.sendto(data, (self.controller_rx_ip, self.controller_rx_port))
 
 class ControllerInterfaceSerial:
-    def __init__(self):
-        pass
+    def __init__(self, data_queue):
+        self.data_queue = data_queue
+        self.ser = serial.Serial('/dev/ttyS0', 921600)
+        self.read_thread_handle = threading.Thread(target=self.read_thread)
+        self.read_thread_handle.start()
+
+    def read_thread(self):
+        while True:
+            data = self.ser.read()
+            self.data_queue.put(data)
+
+    def write(self, data):
+        self.ser.write(data)
 
 def getdict(struct):
     return dict((field, getattr(struct, field)) for field, _ in struct._fields_)

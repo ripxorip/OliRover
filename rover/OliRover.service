@@ -1,0 +1,12 @@
+[Unit]
+Description=Olirover
+After=multi-user.target
+
+[Service]
+Type=idle
+User=ripxorip
+ExecStart=/home/ripxorip/dev/OliRover/rover/run_prod.sh
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

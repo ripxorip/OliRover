@@ -89,7 +89,7 @@
         {
             "label": "Sync and run Rover (embedded)",
             "type": "shell",
-            "command": "rsync -razhmv --exclude-from='.gitignore' -e \"ssh\" ./ ripxorip@olirover.local:/home/ripxorip/dev/OliRover --exclude='.git/' && ssh ripxorip@olirover.local '~/dev/OliRover/.venv/bin/python ~/dev/OliRover/rover/rover.py'",
+            "command": "rsync -razhmv --exclude-from='.gitignore' -e \"ssh\" ./ ripxorip@olirover.local:/home/ripxorip/dev/OliRover --exclude='.git/' && ssh ripxorip@olirover.local 'sudo systemctl restart olirover'",
             "problemMatcher": [],
             "group": {
                 "kind": "build",
