@@ -6,11 +6,11 @@
                 "${workspaceFolder}/**"
             ],
             "defines": [],
-            "compilerPath": "/usr/bin/gcc",
+            "compilerPath": "/usr/bin/clang",
             "cStandard": "c17",
-            "cppStandard": "gnu++17",
-            "intelliSenseMode": "linux-gcc-x64",
-            "compileCommands": "${workspaceFolder}/sim/build/compile_commands.json"
+            "cppStandard": "c++14",
+            "intelliSenseMode": "linux-clang-x64",
+            "compileCommands": "${workspaceFolder}/controller/build_embedded/compile_commands.json"
         }
     ],
     "version": 4

@@ -1,7 +1,9 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.13)
+
+include(pico_sdk_import.cmake)
+
 project(OliRoverController)
 
-find_package(json-c REQUIRED)
 
 # Add compiler_commands.json generation
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -23,6 +25,7 @@ include_directories(
 
 # Create an executable target for the simulation code
 if (BUILD_WITH_SIMULATION)
+    find_package(json-c REQUIRED)
     add_executable(OliRoverControllerSimulator
         src/simulator.c
         ${SOURCES}
@@ -31,9 +34,21 @@ if (BUILD_WITH_SIMULATION)
         json-c)
     message("Building simulation build.")
 else()
-    add_executable(OliRoverController
-        ${SOURCES}
-    )
+
+    # initialize the Raspberry Pi Pico SDK
+    pico_sdk_init()
+
+    set(Libs
+        pico_stdlib
+        )
+
+    add_executable(OliRoverController 
+        src/main.c
+        ${SOURCES})
+    target_link_libraries(OliRoverController ${Libs})
+    pico_add_extra_outputs(OliRoverController)
+    pico_set_linker_script(OliRoverController ${CMAKE_CURRENT_SOURCE_DIR}/app.ld)
+
     message("Building normal build.")
 endif()
 

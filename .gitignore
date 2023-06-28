@@ -6,3 +6,5 @@ sim/compile_commands.json
 OliRover/support/swdl/_input/
 support/swdl/_input/
 *.pyc
+controller/build_embedded/
+compile_commands.json

@@ -75,6 +75,41 @@
                 "kind": "build",
                 "isDefault": false
             }
-        }
+        },
+        {
+            "label": "Build and flash controller (embedded)",
+            "type": "shell",
+            "command": "cd controller/build_embedded && make -j16 && python ~/dev/OliRover/support/swdl/swdl_remote.py ~/dev/OliRover/controller/build_embedded/OliRoverController.elf",
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            }
+        },
+        {
+            "label": "Sync and run Rover (embedded)",
+            "type": "shell",
+            "command": "rsync -razhmv --exclude-from='.gitignore' -e \"ssh\" ./ ripxorip@olirover.local:/home/ripxorip/dev/OliRover --exclude='.git/' && ssh ripxorip@olirover.local '~/dev/OliRover/.venv/bin/python ~/dev/OliRover/rover/rover.py'",
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            }
+        },
+        {
+            "label": "Full SWDL and start rover (embedded)",
+            "type": "shell",
+            "command": "echo 'Full SWDL and start rover (embedded)",
+            "problemMatcher": [],
+            "dependsOn": [
+                "Build and flash controller (embedded)",
+                "Sync and run Rover (embedded)"
+            ],
+            "dependsOrder": "sequence",
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            }
+        },
     ]
 }
