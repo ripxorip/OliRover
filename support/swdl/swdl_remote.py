@@ -8,10 +8,10 @@ def main():
 
     # Scp the binary to the remote machine
     print("Copying binary to remote machine...")
-    os.system(f"scp {binary} ripxorip@olirover.local:~/dev/OliRover/support/swdl/_input/input.elf")
+    os.system(f"scp {binary} ripxorip@olirover:~/dev/OliRover/support/swdl/_input/input.elf")
     # Run the remote script
     print("Performing the download remotely...")
-    os.system(f"ssh ripxorip@olirover.local 'python ~/dev/OliRover/support/swdl/swdl.py ~/dev/OliRover/support/swdl/_input/input.elf'")
+    os.system(f"ssh ripxorip@olirover 'python ~/dev/OliRover/support/swdl/swdl.py ~/dev/OliRover/support/swdl/_input/input.elf'")
 
 if __name__ == "__main__":
     main()

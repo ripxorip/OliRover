@@ -79,7 +79,7 @@
         {
             "label": "Build and flash controller (embedded)",
             "type": "shell",
-            "command": "ssh ripxorip@olirover.local 'sudo systemctl stop olirover' && cd controller/build_embedded && make -j16 && python ~/dev/OliRover/support/swdl/swdl_remote.py ~/dev/OliRover/controller/build_embedded/OliRoverController.elf && ssh ripxorip@olirover.local 'sudo systemctl start olirover'",
+            "command": "ssh ripxorip@olirover 'sudo systemctl stop olirover' && cd controller/build_embedded && make -j16 && python ~/dev/OliRover/support/swdl/swdl_remote.py ~/dev/OliRover/controller/build_embedded/OliRoverController.elf && ssh ripxorip@olirover 'sudo systemctl start olirover'",
             "problemMatcher": [],
             "group": {
                 "kind": "build",
@@ -89,7 +89,7 @@
         {
             "label": "Sync and run Rover (embedded)",
             "type": "shell",
-            "command": "rsync -razhmv --exclude-from='.gitignore' -e \"ssh\" ./ ripxorip@olirover.local:/home/ripxorip/dev/OliRover --exclude='.git/' && ssh ripxorip@olirover.local 'sudo systemctl restart olirover'",
+            "command": "rsync -razhmv --exclude-from='.gitignore' -e \"ssh\" ./ ripxorip@olirover:/home/ripxorip/dev/OliRover --exclude='.git/' && ssh ripxorip@olirover 'sudo systemctl restart olirover'",
             "problemMatcher": [],
             "group": {
                 "kind": "build",
